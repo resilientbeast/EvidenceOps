@@ -117,7 +117,15 @@ export interface IncidentEvent {
   occurredAt: string;
   label: string;
   actor: string;
-  source: "fixture" | "operator";
+  source: "fixture" | "operator" | "agent";
+}
+
+export interface AgentRun {
+  provider: "aimlapi";
+  model: string;
+  generatedAt: string;
+  toolsUsed: string[];
+  evidenceValidated: true;
 }
 
 export interface Incident {
@@ -145,4 +153,5 @@ export interface Incident {
   resolutionLearning: ResolutionLearning;
   events: IncidentEvent[];
   decision?: IncidentDecision;
+  agentRun?: AgentRun;
 }

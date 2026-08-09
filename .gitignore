@@ -33,6 +33,7 @@ yarn-error.log*
 # env files (can opt-in for committing if needed)
 .env*
 !.env.example
+!.env.local.example
 
 # vercel
 .vercel
@@ -40,8 +41,8 @@ yarn-error.log*
 /dist/
 /.wrangler/
 /outputs/
+/output/
 /work/
 
-# Local hackathon research exports may contain community content and are not submission assets.
-/agent-hackathon@slack.txt
+# Local research exports may contain third-party community content.
 /infra/datahub/.generated/

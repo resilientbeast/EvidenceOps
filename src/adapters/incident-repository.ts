@@ -13,4 +13,5 @@ export interface IncidentRepository {
   getById(id: string): Promise<Incident | null>;
   listHistoricalMemory(): Promise<HistoricalMemoryRecord[]>;
   recordDecision(input: RecordDecisionInput): Promise<Incident>;
+  saveAgentRun(incident: Incident): Promise<Incident>;
 }

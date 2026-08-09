@@ -1,9 +1,5 @@
 # RecallOps — Product and Engineering Specification
 
-**Hackathon category:** Agents That Do Real Work  
-**Project ID:** `1373305`  
-**Primary repository:** `C:\Users\arkad\Documents\codex-doppelganger`
-
 ## 1. Product thesis
 
 RecallOps is an evidence-gated incident command center for data and ML
@@ -32,7 +28,7 @@ notes, and people’s memory.
 RecallOps creates one incident dossier that:
 
 1. reads verified context from DataHub with a Reader-only identity;
-2. maps blast radius and presents evidence-backed hypotheses;
+2. maps blast radius and lets the operator run a model-backed, evidence-validated investigation;
 3. retrieves comparable resolved cases from durable PostgreSQL memory;
 4. exposes shared context, changed context, and non-transferable assumptions;
 5. proposes a simulation-only plan and lets an adversarial reviewer challenge
@@ -58,6 +54,17 @@ asset, assertion, severity, and downstream-lineage overlap. PostgreSQL’s
 `pgvector` extension is enabled for a later semantic-retrieval expansion; no
 embedding-based claim is made in the MVP.
 
+The investigation is model-backed rather than a generated-looking fixture.
+On an explicit operator request, AIMLAPI's `openai/gpt-4.1-mini` runs as a
+bounds-checked, two-step tool loop. Its only tool reads the immutable server-side
+evidence bundle, and the loopback-only provider bridge keeps the worker-compatible
+app runtime separate from the external provider call. The model must return
+structured investigator, historian, planner, and reviewer findings along with
+the three supplied hypothesis IDs. Before RecallOps
+shows or persists the result, a deterministic reviewer rejects changed
+hypothesis IDs and any unknown evidence citation. No write or execution tool is
+available to the model.
+
 ## 4. Product boundaries
 
 ### Live and local
@@ -66,6 +73,9 @@ embedding-based claim is made in the MVP.
 - PostgreSQL and PostgREST run locally in Docker and bind only to loopback
   ports.
 - The current incident investigation is a deliberately labeled demo fixture.
+- An optional GPT-4.1 mini AI run enhances that fixture only when an operator selects
+  **Run AI investigation** and configures `AIMLAPI_KEY`; it is visibly labeled
+  with its model and evidence-validation result.
 - Historical records, human decisions, and audit replay are persisted in local
   PostgreSQL when configured.
 
@@ -84,7 +94,7 @@ embedding-based claim is made in the MVP.
 ```mermaid
 flowchart LR
   DH["DataHub OSS\nReader-only"] --> CTX["Verified catalog context"]
-  CTX --> INV["Evidence-gated investigator"]
+  CTX --> INV["GPT-4.1 mini investigator\nread-only tool loop"]
   PG[("PostgreSQL + pgvector\nlocal agentic memory")] --> HIST["Historian"]
   HIST --> DELTA["Match delta"]
   INV --> PLAN["Simulation-only planner"]
@@ -100,6 +110,7 @@ flowchart LR
 | Component | Responsibility |
 | --- | --- |
 | Vinext/Cloudflare-compatible app | Incident console and API routes |
+| AIMLAPI + GPT-4.1 mini | On-demand structured agent reasoning over a read-only evidence tool |
 | DataHub OSS | Read-only ownership, schema, and lineage context |
 | PostgreSQL + pgvector | Incident dossier, historical memory, decisions, audit state |
 | PostgREST | Loopback-only HTTP bridge for the worker-compatible runtime |
@@ -114,11 +125,14 @@ flowchart LR
    92% contextual similarity.
 4. Match delta distinguishes reusable diagnostic context from changed assets
    and verification requirements.
-5. The planner proposes a simulated action; the reviewer blocks unchecked
+5. The operator can select **Run AI investigation**. GPT-4.1 mini reads the bounded
+   evidence tool, returns structured findings, and RecallOps validates every
+   hypothesis and cited evidence ID before storing the run.
+6. The planner proposes a simulated action; the reviewer blocks unchecked
    assumptions.
-6. The operator approves or requests review. The decision and resulting audit
+7. The operator approves or requests review. The decision and resulting audit
    event are persisted with an idempotency key and plan-version check.
-7. Audit replay reveals evidence, agent checks, human decision, and the
+8. Audit replay reveals evidence, agent checks, human decision, and the
    guarded learning outcome.
 
 ## 7. Persistent storage
@@ -162,8 +176,9 @@ The demo should show:
 1. the connected DataHub catalog card and its Reader-only boundary;
 2. the `PostgreSQL connected` status and three stored resolutions searched;
 3. `INC-184` at 92% with its match delta;
-4. the human decision gate and replayable audit timeline; and
-5. the local-only Docker setup and smoke-test output.
+4. an explicit GPT-4.1 mini AI run and its `evidence validated` state;
+5. the human decision gate and replayable audit timeline; and
+6. the local-only Docker setup and smoke-test output.
 
 ## 10. Near-term evolution
 

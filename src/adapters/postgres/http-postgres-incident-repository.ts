@@ -86,4 +86,22 @@ export class HttpPostgresIncidentRepository implements IncidentRepository {
     }
     throw new Error("The incident changed while the decision was being recorded. Please retry.");
   }
+
+  async saveAgentRun(incident: Incident): Promise<Incident> {
+    const row = await this.getDossier(incident.id);
+    if (!row) throw new Error(`Incident ${incident.id} was not found.`);
+
+    const updatedAt = new Date().toISOString();
+    const params = new URLSearchParams({ id: `eq.${incident.id}`, updated_at: `eq.${row.updated_at}` });
+    const response = await this.request(`/incident_dossiers?${params}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json", Prefer: "return=representation" },
+      body: JSON.stringify({ payload: incident, updated_at: updatedAt }),
+    });
+    const updated = await response.json() as DossierRow[];
+    if (updated.length !== 1) {
+      throw new Error("The incident changed while the agent run was being recorded. Please retry.");
+    }
+    return parseIncident(updated[0].payload);
+  }
 }

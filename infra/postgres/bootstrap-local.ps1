@@ -14,7 +14,9 @@ $environmentPath = Join-Path $repositoryRoot ".env.local"
 $connectionKey = "POSTGRES_MEMORY_URL="
 $apiKey = "POSTGRES_MEMORY_API_URL="
 $existingConnection = if (Test-Path -LiteralPath $environmentPath) {
-  Get-Content -LiteralPath $environmentPath | Where-Object { $_.StartsWith($connectionKey) } | Select-Object -First 1
+  Get-Content -LiteralPath $environmentPath |
+    Where-Object { $_.StartsWith($connectionKey) -and -not [string]::IsNullOrWhiteSpace($_.Substring($connectionKey.Length)) } |
+    Select-Object -First 1
 }
 
 if ($existingConnection) {
@@ -44,6 +46,24 @@ for ($attempt = 1; $attempt -le 30; $attempt++) {
 }
 if (-not $ready) { throw "PostgreSQL did not become ready within 30 seconds. Check docker logs $ContainerName." }
 
-Add-Content -LiteralPath $environmentPath -Value "`n$connectionKey`postgresql://$UserName`:$password@localhost`:$HostPort/$DatabaseName"
-Add-Content -LiteralPath $environmentPath -Value "$apiKey`http://127.0.0.1:$ApiPort"
+function Set-LocalEnvironmentValue([string]$key, [string]$value) {
+  $linePrefix = "$key="
+  $lines = if (Test-Path -LiteralPath $environmentPath) { Get-Content -LiteralPath $environmentPath } else { @() }
+  $replaced = $false
+  $updated = foreach ($line in $lines) {
+    if ($line.StartsWith($linePrefix) -and -not $replaced) {
+      $replaced = $true
+      "$linePrefix$value"
+    } elseif ($line.StartsWith($linePrefix)) {
+      # Remove stale duplicate definitions so the generated connection is unambiguous.
+    } else {
+      $line
+    }
+  }
+  if (-not $replaced) { $updated += "$linePrefix$value" }
+  Set-Content -LiteralPath $environmentPath -Value $updated
+}
+
+Set-LocalEnvironmentValue "POSTGRES_MEMORY_URL" "postgresql://$UserName`:$password@localhost`:$HostPort/$DatabaseName"
+Set-LocalEnvironmentValue "POSTGRES_MEMORY_API_URL" "http://127.0.0.1:$ApiPort"
 Write-Host "PostgreSQL agent memory is ready and configured in .env.local. Run npm run postgres:api, restart the app, load it once, then run npm run postgres:smoke."

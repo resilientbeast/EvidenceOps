@@ -132,4 +132,14 @@ export class PostgresIncidentRepository implements IncidentRepository {
       client.release();
     }
   }
+
+  async saveAgentRun(incident: Incident): Promise<Incident> {
+    await this.ensureInitialized();
+    const result = await this.pool.query<{ payload: unknown }>(
+      "UPDATE incident_dossiers SET payload = $2::JSONB, updated_at = now() WHERE id = $1 RETURNING payload",
+      [incident.id, JSON.stringify(incident)],
+    );
+    if (!result.rowCount) throw new Error(`Incident ${incident.id} was not found.`);
+    return cloneIncident(normalizePayload(result.rows[0].payload));
+  }
 }

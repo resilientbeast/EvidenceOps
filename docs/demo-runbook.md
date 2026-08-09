@@ -1,52 +1,42 @@
-# Local hackathon demo runbook
+# Local demo runbook
 
-The DataHub Agent Hackathon rules explicitly permit the local DataHub
-Quickstart. This project uses that allowed path for its functional demo rather
-than making a partially configured catalog public.
+RecallOps supports a fully local DataHub Quickstart for development, testing,
+and demonstrations. No public catalog deployment is required.
 
 ## What is live and what is a fixture
 
 | Surface | Status | Evidence shown |
 | --- | --- | --- |
-| DataHub catalog context | Live, local, read-only | Dataset name, owners, schema-field count, downstream assets, observation time |
-| Incident investigation | Fixture | Seeded lineage narrative, hypotheses, historical match, simulated approval |
+| DataHub catalog context | Live, local, read-only | DataHub MCP: dataset name, owners, schema-field count, downstream assets, observation time |
+| Incident investigation | Fixture plus optional model run | Seeded lineage narrative, hypotheses, historical match, simulated approval |
 | DataHub writes | Disabled | MCP preflight rejects mutation tools; no public write endpoint exists |
 
-Never describe the fixture investigation as a live incident. The console makes
-the boundary visible: the live card is separately named **Verified catalog
-context** and only appears as connected after the route has successfully read
-the local catalog.
+Never describe the fixture investigation as a live incident. The console keeps
+the boundary visible: **Verified catalog context** is separate and only becomes
+connected after the app reads the local catalog.
 
-## Before recording
+## Full local setup
 
 1. Start Docker Desktop.
-2. In PowerShell, run `./infra/datahub/bootstrap-auth-enabled.ps1`.
-3. Create a dedicated DataHub service account with the **Reader** role. Keep
-   its token only in the untracked `.env.local` file as `DATAHUB_GMS_TOKEN`.
-4. Set `DATAHUB_GMS_URL=http://localhost:8080` and leave
-   `DATAHUB_LIVE_SOURCE_URN` at the bootstrap default from `.env.example`.
-5. Run `npm run datahub:smoke`. It must succeed before calling anything live.
-6. If the bootstrap graph is empty, use a separate short-lived writer token in
-   `DATAHUB_SEED_TOKEN`, run `npm run datahub:seed`, then revoke that writer
-   token. Do not use it for the app or MCP preflight.
-7. Run `npm run dev` and open the app. The live card should read `connected`
-   and name `fct_users_created`.
+2. Copy `.env.local.example` to `.env.local`.
+3. Run `npm install`.
+4. Run `npm run postgres:bootstrap`, then `npm run postgres:api`.
+5. In PowerShell, run `./infra/datahub/bootstrap-auth-enabled.ps1`.
+6. Create a DataHub **Reader** service account and set `DATAHUB_GMS_TOKEN` in
+   `.env.local`. Keep `DATAHUB_GMS_URL=http://localhost:8080`.
+7. Run `npm run datahub:smoke`. If the bootstrap graph is empty, use a separate
+   short-lived writer token in `DATAHUB_SEED_TOKEN`, run `npm run datahub:seed`,
+   then revoke that token.
+8. Set a random `DATAHUB_MCP_BRIDGE_TOKEN`, choose either `auto` or strict
+   `mcp` mode, and run `npm run datahub:mcp-bridge` in a separate terminal.
+9. If using model-backed investigation, set `AIMLAPI_KEY` and run
+   `npm run ai:bridge` in another terminal.
+10. Run `npm run dev` and open `http://localhost:3000`. The catalog card should
+    say **Via DataHub MCP** when strict MCP mode is configured.
 
-## Suggested under-three-minute video sequence
+## Before enabling write-back
 
-1. Show the incident command page and point out the `DEMO FIXTURE` label.
-2. Show the `Verified catalog context` card: its connected state, source
-   dataset, owner, field count, downstream count, and observation time are the
-   genuine local DataHub read.
-3. Switch to DataHub and show the same source dataset and a downstream asset.
-4. Return to the app, inspect a competing hypothesis, and use the simulated
-   human decision gate.
-5. Close with the repository's local setup instructions and explain that
-   catalog access is Reader-only and DataHub mutation tools are disabled.
-
-## Submission materials
-
-The Devpost entry should link to the public repository and the public demo
-video. The repository provides free local reproduction instructions for the
-DataHub-backed portion. If the app itself is hosted separately, label it a
-fixture preview unless it can reach the same configured DataHub environment.
+Write-back needs a separate, opt-in execution path with narrowly scoped
+credentials and an approval gate. After every mutation, read the exact target
+URN or aspect directly with bounded backoff and persist a receipt. Never rely
+on search results as read-your-own-write verification.

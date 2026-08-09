@@ -38,6 +38,14 @@ test("incident API serves a typed fixture and enforces decision idempotency", as
   assert.match(initialPayload.incident.historicalMatch.summary, /Retrieved from 3 stored resolutions/);
   assert.equal(initialPayload.incident.decision, undefined);
 
+  const unavailableAgentResponse = await worker.fetch(
+    new Request("http://localhost/api/incidents/INC-247/agent-run", { method: "POST" }),
+    environment(),
+    executionContext,
+  );
+  assert.equal(unavailableAgentResponse.status, 503);
+  assert.match((await unavailableAgentResponse.json()).error, /AIMLAPI_KEY is not configured/);
+
   const invalidResponse = await worker.fetch(
     new Request("http://localhost/api/incidents/INC-247/decisions", {
       method: "POST",

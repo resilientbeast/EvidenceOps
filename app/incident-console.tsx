@@ -28,12 +28,14 @@ export function IncidentConsole({ initialIncident }: IncidentConsoleProps) {
     initialIncident.hypotheses[0]?.id ?? "",
   );
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [submissionError, setSubmissionError] = useState<string | null>(null);
+  const [decisionError, setDecisionError] = useState<string | null>(null);
   const [liveContext, setLiveContext] = useState<LiveDataHubContext | null>(null);
   const [liveContextError, setLiveContextError] = useState<string | null>(null);
   const [replay, setReplay] = useState<ReplayPayload["replay"] | null>(null);
   const [isReplayOpen, setIsReplayOpen] = useState(false);
   const [replayError, setReplayError] = useState<string | null>(null);
+  const [isRunningAi, setIsRunningAi] = useState(false);
+  const [aiRunError, setAiRunError] = useState<string | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -95,9 +97,28 @@ export function IncidentConsole({ initialIncident }: IncidentConsoleProps) {
   const sourceLabel = isFixture ? "Fixture · seeded demo" : "DataHub · live";
   const decision = incident.decision?.kind;
 
+  async function runAiInvestigation() {
+    setIsRunningAi(true);
+    setAiRunError(null);
+
+    try {
+      const response = await fetch(`/api/incidents/${incident.id}/agent-run`, { method: "POST" });
+      const payload = (await response.json()) as IncidentResponse | ApiErrorResponse;
+      if (!response.ok || !("incident" in payload)) {
+        setAiRunError("error" in payload ? payload.error : "Unable to complete the AI investigation.");
+        return;
+      }
+      setIncident(payload.incident);
+    } catch {
+      setAiRunError("Unable to reach the AI investigation endpoint. Please try again.");
+    } finally {
+      setIsRunningAi(false);
+    }
+  }
+
   async function submitDecision(kind: DecisionKind) {
     setIsSubmitting(true);
-    setSubmissionError(null);
+    setDecisionError(null);
 
     try {
       const response = await fetch(`/api/incidents/${incident.id}/decisions`, {
@@ -113,13 +134,13 @@ export function IncidentConsole({ initialIncident }: IncidentConsoleProps) {
       });
       const payload = (await response.json()) as IncidentResponse | ApiErrorResponse;
       if (!response.ok || !("incident" in payload)) {
-        setSubmissionError("error" in payload ? payload.error : "Unable to record the decision.");
+        setDecisionError("error" in payload ? payload.error : "Unable to record the decision.");
         return;
       }
 
       setIncident(payload.incident);
     } catch {
-      setSubmissionError("Unable to reach the incident API. Please try again.");
+      setDecisionError("Unable to reach the incident API. Please try again.");
     } finally {
       setIsSubmitting(false);
     }
@@ -174,6 +195,7 @@ export function IncidentConsole({ initialIncident }: IncidentConsoleProps) {
           <div className="topbar-actions">
             <span className="connection"><i /> {isFixture ? "DataHub fixture" : "DataHub connected"}</span>
             <span className="connection"><i /> {isPersistentMemory ? "PostgreSQL connected" : "Memory fixture"}</span>
+            <span className="connection">{incident.agentRun ? `AI verified · ${incident.agentRun.model}` : "AI run pending"}</span>
             <button className="icon-button" aria-label="More actions" type="button">•••</button>
           </div>
         </header>
@@ -251,8 +273,16 @@ export function IncidentConsole({ initialIncident }: IncidentConsoleProps) {
                   <p className="eyebrow">GROUNDED INVESTIGATION</p>
                   <h3>Competing hypotheses</h3>
                 </div>
-                <span className="agent-count">fixture investigation</span>
+                <div className="agent-run-control">
+                  <span className="agent-count">
+                    {incident.agentRun ? "AI output · evidence validated" : "fixture investigation"}
+                  </span>
+                  <button className="quiet-button" disabled={isRunningAi} onClick={runAiInvestigation} type="button">
+                    {isRunningAi ? "Running AI…" : incident.agentRun ? "Run AI again" : "Run AI investigation"}
+                  </button>
+                </div>
               </div>
+              {aiRunError ? <p className="agent-run-error" role="alert">{aiRunError}</p> : null}
               <div className="hypothesis-list">
                 {incident.hypotheses.map((hypothesis) => (
                   <button
@@ -377,7 +407,10 @@ export function IncidentConsole({ initialIncident }: IncidentConsoleProps) {
                     {" · "}{liveContext.source.schemaFieldCount} fields
                   </p>
                   <p>{liveContext.downstreams.length} downstream assets observed from the local catalog.</p>
-                  <small className="evidence-refs">Observed {new Date(liveContext.observedAt).toLocaleTimeString()}</small>
+                  <small className="evidence-refs">
+                    {liveContext.accessPath === "mcp" ? "Via DataHub MCP" : liveContext.accessPath === "graphql-fallback" ? "MCP unavailable · GraphQL fallback" : "Via DataHub GraphQL"}
+                    {" · "}Observed {new Date(liveContext.observedAt).toLocaleTimeString()}
+                  </small>
                 </div>
               ) : (
                 <div className="live-context-copy unavailable">
@@ -422,7 +455,7 @@ export function IncidentConsole({ initialIncident }: IncidentConsoleProps) {
               {isReplayOpen ? "Hide audit replay" : "Show audit replay"}
             </button>
           </div>
-          {submissionError ? <p className="decision-error" role="alert">{submissionError}</p> : null}
+          {decisionError ? <p className="decision-error" role="alert">{decisionError}</p> : null}
         </section>
 
         {isReplayOpen ? (

@@ -61,6 +61,15 @@ export class FixtureIncidentRepository implements IncidentRepository {
 
     return cloneIncident(this.incident);
   }
+
+  async saveAgentRun(incident: Incident): Promise<Incident> {
+    if (incident.id !== this.incident.id) {
+      throw new Error(`Incident ${incident.id} was not found.`);
+    }
+
+    this.incident = cloneIncident(incident);
+    return cloneIncident(this.incident);
+  }
 }
 
 export const fixtureIncidentRepository = new FixtureIncidentRepository();
