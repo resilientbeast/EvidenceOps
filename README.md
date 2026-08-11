@@ -1,25 +1,31 @@
-# RecallOps
+# EvidenceOps
 
-RecallOps is an evidence-gated incident command center for data and ML
-operations. It combines live, read-only organizational context from DataHub
-with durable PostgreSQL incident memory, then keeps proposed remediation behind
-an explicit human decision gate.
+EvidenceOps is an evidence-gated incident command center for infrastructure
+operations. It combines a CockroachDB infrastructure catalog and vector incident
+memory with AWS Bedrock reasoning, then keeps proposed remediation behind an
+explicit human decision gate with immutable audit replay.
 
-> DataHub shows what an incident can affect; RecallOps retains what worked,
-> why it worked, and what must be re-verified.
+> EvidenceOps gathers the facts, remembers what worked, and requires a human
+> before anything acts.
+
+EvidenceOps originated as the RecallOps entry for the DataHub Agent Hackathon;
+the CockroachDB, AWS, infrastructure-catalog, and vector-memory work was built
+for the CockroachDB × AWS Hackathon.
 
 **License:** [Apache-2.0](LICENSE)
 
 ## What it does
 
-- Maps a fixture incident's blast radius and competing hypotheses.
-- Reads live ownership, schema, and downstream context from a local DataHub
-  instance through a read-only MCP bridge.
-- Retrieves comparable resolved incidents from PostgreSQL-backed agentic
-  memory and explains the match delta.
-- Optionally runs GPT-4.1 mini through AIMLAPI against a forced read-only
-  evidence tool, then validates its output before persisting it.
+- Maps an active infrastructure incident's server, site, service, and campaign
+  blast radius from a CockroachDB catalog.
+- Retrieves comparable resolved incidents using CockroachDB Distributed Vector
+  Indexing and explains the match delta.
+- Runs GPT-OSS 120B through AWS Bedrock against a forced read-only evidence
+  tool, then validates its output before persisting it.
 - Simulates a human-approved remediation and exposes its audit replay.
+
+The AWS Lightsail deployment runbook is in
+[`docs/lightsail-deployment.md`](docs/lightsail-deployment.md).
 
 The incident narrative is intentionally labeled as a fixture. Live DataHub and
 PostgreSQL states are shown separately in the interface and are never presented

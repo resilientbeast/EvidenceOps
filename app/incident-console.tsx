@@ -1,9 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import type { BlastRadiusAsset, DecisionKind, Incident } from "@/src/domain/incident";
+import type { BlastRadiusAsset, DecisionKind, Incident, InfrastructureContext } from "@/src/domain/incident";
 import type { ApiErrorResponse, IncidentResponse } from "@/src/contracts/api";
-import type { LiveDataHubContext } from "@/src/adapters/datahub/live-context";
 
 type ReplayPayload = {
   replay: {
@@ -29,8 +28,8 @@ export function IncidentConsole({ initialIncident }: IncidentConsoleProps) {
   );
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [decisionError, setDecisionError] = useState<string | null>(null);
-  const [liveContext, setLiveContext] = useState<LiveDataHubContext | null>(null);
-  const [liveContextError, setLiveContextError] = useState<string | null>(null);
+  const [catalogContext, setCatalogContext] = useState<InfrastructureContext | null>(initialIncident.infrastructure ?? null);
+  const [catalogContextError, setCatalogContextError] = useState<string | null>(null);
   const [replay, setReplay] = useState<ReplayPayload["replay"] | null>(null);
   const [isReplayOpen, setIsReplayOpen] = useState(false);
   const [replayError, setReplayError] = useState<string | null>(null);
@@ -41,6 +40,7 @@ export function IncidentConsole({ initialIncident }: IncidentConsoleProps) {
     let cancelled = false;
 
     async function refreshIncident() {
+      if (initialIncident.mode === "live") return;
       try {
         const response = await fetch(`/api/incidents/${initialIncident.id}`);
         const payload = (await response.json()) as IncidentResponse | ApiErrorResponse;
@@ -56,33 +56,34 @@ export function IncidentConsole({ initialIncident }: IncidentConsoleProps) {
     return () => {
       cancelled = true;
     };
-  }, [initialIncident.id]);
+  }, [initialIncident.id, initialIncident.mode]);
 
   useEffect(() => {
     let cancelled = false;
 
-    async function loadLiveContext() {
+    async function loadCatalogContext() {
+      if (initialIncident.mode === "fixture" || initialIncident.infrastructure) return;
       try {
-        const response = await fetch("/api/datahub/context");
+        const response = await fetch(`/api/infra/context?incidentId=${encodeURIComponent(initialIncident.id)}`);
         const payload = (await response.json()) as
-          | { context: LiveDataHubContext }
+          | { context: InfrastructureContext }
           | { error: { message?: string } };
         if (cancelled) return;
         if (response.ok && "context" in payload) {
-          setLiveContext(payload.context);
+          setCatalogContext(payload.context);
           return;
         }
-        setLiveContextError("A local DataHub connection has not been configured.");
+        setCatalogContextError("CockroachDB infrastructure context is unavailable.");
       } catch {
-        if (!cancelled) setLiveContextError("Local DataHub context is unavailable.");
+        if (!cancelled) setCatalogContextError("CockroachDB infrastructure context is unavailable.");
       }
     }
 
-    void loadLiveContext();
+    void loadCatalogContext();
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [initialIncident.id, initialIncident.infrastructure, initialIncident.mode]);
 
   const selectedHypothesis = incident.hypotheses.find(
     (hypothesis) => hypothesis.id === selectedHypothesisId,
@@ -93,8 +94,8 @@ export function IncidentConsole({ initialIncident }: IncidentConsoleProps) {
   }
 
   const isFixture = incident.mode === "fixture";
-  const isPersistentMemory = incident.memoryMode === "postgres";
-  const sourceLabel = isFixture ? "Fixture · seeded demo" : "DataHub · live";
+  const isPersistentMemory = incident.memoryMode !== "fixture";
+  const sourceLabel = isFixture ? "Fixture · seeded demo" : "CockroachDB · live";
   const decision = incident.decision?.kind;
 
   async function runAiInvestigation() {
@@ -167,8 +168,8 @@ export function IncidentConsole({ initialIncident }: IncidentConsoleProps) {
   return (
     <main className="app-shell">
       <aside className="rail" aria-label="Primary navigation">
-        <div className="brand-mark" aria-label="RecallOps">
-          RO
+        <div className="brand-mark" aria-label="EvidenceOps">
+          EO
         </div>
         <nav className="rail-nav">
           <button className="rail-button active" aria-label="Active incident" type="button">
@@ -189,12 +190,12 @@ export function IncidentConsole({ initialIncident }: IncidentConsoleProps) {
       <section className="workspace">
         <header className="topbar">
           <div>
-            <p className="eyebrow">RECALLOPS · AGENTIC MEMORY</p>
+            <p className="eyebrow">EVIDENCEOPS · AGENTIC MEMORY</p>
             <h1>Incident command</h1>
           </div>
           <div className="topbar-actions">
-            <span className="connection"><i /> {isFixture ? "DataHub fixture" : "DataHub connected"}</span>
-            <span className="connection"><i /> {isPersistentMemory ? "PostgreSQL connected" : "Memory fixture"}</span>
+            <span className="connection"><i /> {isFixture ? "DataHub fixture" : "Infra catalog connected"}</span>
+            <span className="connection"><i /> {incident.memoryMode === "cockroachdb" ? "CockroachDB vector memory" : isPersistentMemory ? "PostgreSQL connected" : "Memory fixture"}</span>
             <span className="connection">{incident.agentRun ? `AI verified · ${incident.agentRun.model}` : "AI run pending"}</span>
             <button className="icon-button" aria-label="More actions" type="button">•••</button>
           </div>
@@ -208,7 +209,11 @@ export function IncidentConsole({ initialIncident }: IncidentConsoleProps) {
           <div className="incident-title">
             <p className="eyebrow">{isFixture ? "DEMO FIXTURE" : "ACTIVE"} · {incident.id}</p>
             <h2>{incident.title}</h2>
-            <p>Detected by <strong>{incident.assertionName}</strong> · Opened 09:42 SGT</p>
+            <p>
+              Detected by <strong>{incident.assertionName}</strong> · Opened {incident.openedAt
+                ? new Date(incident.openedAt).toLocaleString("en-SG", { timeZoneName: "short" })
+                : "time not precisely recorded"}
+            </p>
           </div>
           <div className="banner-metric">
             <strong>{incident.blastRadius.length}</strong>
@@ -220,11 +225,11 @@ export function IncidentConsole({ initialIncident }: IncidentConsoleProps) {
           </div>
           <button
             className="quiet-button"
-            disabled={isFixture}
-            title="Available after DataHub is connected"
+            disabled
+            title={isFixture ? "Available after DataHub is connected" : "Infrastructure context verified in CockroachDB"}
             type="button"
           >
-            Open in DataHub ↗
+            {isFixture ? "Open in DataHub ↗" : "Catalog evidence verified"}
           </button>
         </div>
 
@@ -275,7 +280,7 @@ export function IncidentConsole({ initialIncident }: IncidentConsoleProps) {
                 </div>
                 <div className="agent-run-control">
                   <span className="agent-count">
-                    {incident.agentRun ? "AI output · evidence validated" : "fixture investigation"}
+                    {incident.agentRun ? "AI output · evidence validated" : isFixture ? "fixture investigation" : "evidence-bundle investigation"}
                   </span>
                   <button className="quiet-button" disabled={isRunningAi} onClick={runAiInvestigation} type="button">
                     {isRunningAi ? "Running AI…" : incident.agentRun ? "Run AI again" : "Run AI investigation"}
@@ -392,29 +397,27 @@ export function IncidentConsole({ initialIncident }: IncidentConsoleProps) {
             <section className="panel live-context-panel" aria-live="polite">
               <div className="panel-heading compact-heading">
                 <div>
-                  <p className="eyebrow">READ-ONLY LOCAL DATAHUB</p>
+                  <p className="eyebrow">{isFixture ? "READ-ONLY LOCAL DATAHUB" : "READ-ONLY COCKROACHDB CATALOG"}</p>
                   <h3>Verified catalog context</h3>
                 </div>
-                <span className={liveContext ? "live-state connected" : "live-state"}>
-                  {liveContext ? "connected" : "optional"}
+                <span className={catalogContext ? "live-state connected" : "live-state"}>
+                  {catalogContext ? "connected" : "optional"}
                 </span>
               </div>
-              {liveContext ? (
+              {catalogContext ? (
                 <div className="live-context-copy">
-                  <strong>{liveContext.source.name}</strong>
+                  <strong>{catalogContext.site.domain}</strong>
                   <p>
-                    {liveContext.source.owners.length ? `Owner: ${liveContext.source.owners.join(", ")}` : "No owner returned"}
-                    {" · "}{liveContext.source.schemaFieldCount} fields
+                    {catalogContext.server.hostname} · {catalogContext.server.panel ?? "panel unknown"} · {catalogContext.server.region ?? "region unknown"}
                   </p>
-                  <p>{liveContext.downstreams.length} downstream assets observed from the local catalog.</p>
+                  <p>{catalogContext.service.name} · {catalogContext.service.status ?? "status unknown"}</p>
                   <small className="evidence-refs">
-                    {liveContext.accessPath === "mcp" ? "Via DataHub MCP" : liveContext.accessPath === "graphql-fallback" ? "MCP unavailable · GraphQL fallback" : "Via DataHub GraphQL"}
-                    {" · "}Observed {new Date(liveContext.observedAt).toLocaleTimeString()}
+                    Via CockroachDB SQL · Observed {new Date(catalogContext.observedAt).toLocaleTimeString()}
                   </small>
                 </div>
               ) : (
                 <div className="live-context-copy unavailable">
-                  <p>{liveContextError ?? "Checking the local DataHub catalog…"}</p>
+                  <p>{catalogContextError ?? (isFixture ? "Local DataHub context is optional for the fixture." : "Checking the CockroachDB catalog…")}</p>
                   <small>Fixture investigation remains available without a catalog connection.</small>
                 </div>
               )}
@@ -462,7 +465,7 @@ export function IncidentConsole({ initialIncident }: IncidentConsoleProps) {
           <section className="panel audit-panel" aria-live="polite">
             <div className="panel-heading">
               <div>
-                <p className="eyebrow">AUDIT REPLAY · FIXTURE MEMORY</p>
+                <p className="eyebrow">AUDIT REPLAY · {incident.memoryMode === "cockroachdb" ? "COCKROACHDB MEMORY" : "FIXTURE MEMORY"}</p>
                 <h3>Why this action is bounded</h3>
               </div>
               <span className="source-badge">immutable projection</span>

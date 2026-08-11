@@ -1,11 +1,13 @@
 export type DataMode = "fixture" | "live";
-export type MemoryMode = "fixture" | "postgres";
-export type IncidentStatus = "open" | "awaiting_execution" | "needs_review";
+export type MemoryMode = "fixture" | "postgres" | "cockroachdb";
+export type IncidentStatus = "open" | "awaiting_execution" | "needs_review" | "resolved";
 export type DecisionKind = "approved" | "review";
 export type RiskClass = "read" | "simulate" | "write-low-risk" | "write-high-risk";
 
 export type EvidenceSourceSystem =
   | "datahub"
+  | "cockroachdb"
+  | "bedrock"
   | "postgresql"
   | "action-runner"
   | "operator";
@@ -21,11 +23,43 @@ export interface Evidence {
 
 export interface BlastRadiusAsset {
   id: string;
-  type: "source" | "transformation" | "dashboard" | "ml-feature";
+  type: "source" | "transformation" | "dashboard" | "ml-feature" | "server" | "site" | "service" | "campaign";
   name: string;
   platform: string;
   status: "failed" | "delayed" | "at-risk";
   evidenceId: string;
+}
+
+export interface InfrastructureServer {
+  id: string;
+  hostname: string;
+  panel: string | null;
+  region: string | null;
+}
+
+export interface InfrastructureSite {
+  id: string;
+  serverId: string;
+  domain: string;
+  owner: string | null;
+  slaTier: string | null;
+}
+
+export interface InfrastructureService {
+  id: string;
+  siteId: string;
+  kind: string;
+  name: string;
+  status: string | null;
+  metadata: Record<string, unknown>;
+}
+
+export interface InfrastructureContext {
+  server: InfrastructureServer;
+  site: InfrastructureSite;
+  service: InfrastructureService;
+  observedAt: string;
+  accessPath: "cockroachdb-sql";
 }
 
 export interface Hypothesis {
@@ -59,13 +93,18 @@ export interface HistoricalMemoryRecord {
   assertionName: string;
   severity: Incident["severity"];
   downstreamAssetIds: string[];
-  resolvedAt: string;
-  durationMinutes: number;
+  resolvedAt: string | null;
+  durationMinutes: number | null;
   rootCause: string;
   winningAction: string;
   outcome: string;
   verificationRequirements: string[];
   evidenceId: string;
+  vectorDistance?: number;
+  corpusCount?: number;
+  infrastructure?: InfrastructureContext;
+  sharedSignals?: string[];
+  changedSignals?: string[];
 }
 
 export interface MatchDelta {
@@ -121,7 +160,7 @@ export interface IncidentEvent {
 }
 
 export interface AgentRun {
-  provider: "aimlapi";
+  provider: "aimlapi" | "bedrock";
   model: string;
   generatedAt: string;
   toolsUsed: string[];
@@ -134,8 +173,8 @@ export interface Incident {
   memoryMode: MemoryMode;
   status: IncidentStatus;
   title: string;
-  severity: "SEV-2";
-  openedAt: string;
+  severity: "SEV-2" | "SEV-3";
+  openedAt: string | null;
   assertionName: string;
   sourceAssetUrn: string;
   estimatedExposure: string;
@@ -154,4 +193,5 @@ export interface Incident {
   events: IncidentEvent[];
   decision?: IncidentDecision;
   agentRun?: AgentRun;
+  infrastructure?: InfrastructureContext;
 }

@@ -44,7 +44,7 @@ test("incident API serves a typed fixture and enforces decision idempotency", as
     executionContext,
   );
   assert.equal(unavailableAgentResponse.status, 503);
-  assert.match((await unavailableAgentResponse.json()).error, /AIMLAPI_KEY is not configured/);
+  assert.match((await unavailableAgentResponse.json()).error, /AWS_BEARER_TOKEN_BEDROCK/);
 
   const invalidResponse = await worker.fetch(
     new Request("http://localhost/api/incidents/INC-247/decisions", {

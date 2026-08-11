@@ -26,7 +26,7 @@ test("server-renders the incident console", async () => {
   assert.match(response.headers.get("content-type") ?? "", /^text\/html\b/i);
 
   const html = await response.text();
-  assert.match(html, /<title>RecallOps — Agentic Incident Command<\/title>/i);
+  assert.match(html, /<title>EvidenceOps — Agentic Incident Command<\/title>/i);
   assert.match(html, /NYC Taxi pipeline is 9h 42m stale/);
   assert.match(html, /Competing hypotheses/);
   assert.match(html, /Evidence-gated investigation/);

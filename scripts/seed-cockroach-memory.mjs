@@ -1,0 +1,683 @@
+import { createHash } from "node:crypto";
+import { readFile } from "node:fs/promises";
+import pg from "pg";
+
+const requiredEnvironment = [
+  "COCKROACHDB_URL",
+  "AWS_BEARER_TOKEN_BEDROCK",
+  "AWS_REGION",
+  "BEDROCK_EMBEDDING_MODEL_ID",
+  "BEDROCK_EMBEDDING_DIMENSIONS",
+];
+
+const missingEnvironment = requiredEnvironment.filter((name) => {
+  const value = process.env[name];
+  return !value || value.startsWith("REPLACE_");
+});
+
+if (missingEnvironment.length > 0) {
+  throw new Error(
+    `Missing required environment variable(s): ${missingEnvironment.join(", ")}. Fill them in .env before seeding.`,
+  );
+}
+
+const connectionString = process.env.COCKROACHDB_URL;
+const bedrockBearerToken = process.env.AWS_BEARER_TOKEN_BEDROCK;
+const awsRegion = process.env.AWS_REGION;
+const embeddingModelId = process.env.BEDROCK_EMBEDDING_MODEL_ID;
+const embeddingDimensions = Number.parseInt(process.env.BEDROCK_EMBEDDING_DIMENSIONS, 10);
+
+if (embeddingDimensions !== 1024) {
+  throw new Error(
+    `BEDROCK_EMBEDDING_DIMENSIONS must be 1024 to match incidents.embedding VECTOR(1024); received ${embeddingDimensions}.`,
+  );
+}
+
+if (!/^[a-z]{2}(?:-gov)?-[a-z]+-\d$/.test(awsRegion)) {
+  throw new Error("AWS_REGION does not look like a valid AWS Region identifier.");
+}
+
+const seedSet = "recallops-cockroachdb-phase2-v1";
+
+function addIntegrity(evidence) {
+  const canonicalEvidence = JSON.stringify(evidence);
+  const sha256 = createHash("sha256").update(canonicalEvidence).digest("hex");
+  return {
+    ...evidence,
+    integrity: {
+      algorithm: "sha256",
+      sha256,
+    },
+  };
+}
+
+const seedRecords = [
+  {
+    server: {
+      id: "10000000-0000-4000-8000-000000000001",
+      hostname: "campaigns.riddimstream.com",
+      panel: "Plesk",
+      region: "UK",
+    },
+    site: {
+      id: "20000000-0000-4000-8000-000000000001",
+      domain: "campaigns.riddimstream.com",
+      owner: "Riddimstream",
+      slaTier: null,
+    },
+    service: {
+      id: "30000000-0000-4000-8000-000000000001",
+      kind: "redis",
+      name: "MailWizz Redis container",
+      status: "healthy_after_remediation",
+      metadata: {
+        image: "redis:latest",
+        runtime: "Plesk Docker extension",
+        originalContainerMemoryMb: 256,
+        remediatedContainerMemoryMb: 512,
+        redisMaxmemory: "400mb",
+        redisMaxmemoryPolicy: "allkeys-lru",
+        redisSave: "",
+        mutexDatabase: 1,
+      },
+    },
+    incident: {
+      id: "40000000-0000-4000-8000-000000000001",
+      severity: "SEV-2",
+      title: "MailWizz campaigns stalled under Redis container memory pressure",
+      rootCause:
+        "Redis memory pressure near the 256 MB container limit caused intermittent instability. It appeared first as Predis connections dropping mid-request and later as PCNTL mutex and lock confusion, but both symptoms had the same underlying cause rather than representing separate bugs.",
+      resolution:
+        "Raised the Redis container memory limit from 256 MB to 512 MB and applied maxmemory 400mb, maxmemory-policy allkeys-lru, and save \"\" over SSH to remove RDB snapshot pressure. No manual lock clearing or PCNTL disabling was required.",
+      outcome:
+        "Campaigns 5006, 5002, and 5001 resumed and completed after the Redis memory increase on 2026-07-25.",
+      status: "resolved",
+      openedAt: null,
+      resolvedAt: null,
+      evidence: addIntegrity({
+        schemaVersion: 1,
+        seedSet,
+        seedKey: "real-riddimstream-mailwizz-redis-2026-07",
+        provenance: {
+          kind: "operator_report",
+          synthetic: false,
+        },
+        summary:
+          "Multiple MailWizz campaigns stalled for several days while other campaigns and SES delivery continued. Redis was at 222.5 MB of a 256 MB container limit, Predis connections dropped mid-request, and later the Redis-backed PCNTL mutex reported previously acquired locks. Increasing Redis headroom and removing snapshot pressure allowed the already-running sends to finish.",
+        timeContext: {
+          timezone: "Europe/London",
+          julyOffset: "+01:00",
+          precision: "date_range_with_one_exact_local_observation",
+          incidentWindowLocal: {
+            startDate: "2026-07-22",
+            endDate: "2026-07-25",
+          },
+          exactLocalObservations: [
+            {
+              at: "2026-07-23T18:32:00+01:00",
+              fact:
+                "Campaign 5006 was stuck at Sending (78%); sibling campaign 5005 had completed at the identical timestamp.",
+            },
+          ],
+        },
+        symptoms: [
+          "Campaign 5006 remained at Sending (78%) for more than 40 hours.",
+          "Campaign 5002 remained at 13% and campaign 5001 remained at 23% since 2026-07-22.",
+          "Other campaigns continued to complete, so this was not a full outage.",
+        ],
+        diagnostics: [
+          "The redis:latest container was running at 222.5 MB of a 256 MB limit, approximately 87% utilization.",
+          "Application logs repeatedly showed Predis Connection ConnectionException errors on tracking routes: Redis was reachable but dropped connections mid-request.",
+          "A verbose send-campaigns cron debug run on 2026-07-25 completed cycles and delivered other campaigns through SES, proving the cron itself was healthy.",
+          "MailWizz's Redis-backed PCNTL mutex in database 1 reported: PCNTL processes running already, locks acquired previously!",
+          "FLUSHDB did not remove the mutex condition because real PCNTL processes were genuinely holding it at that moment.",
+        ],
+        resolutionActions: [
+          "Raised the Redis Docker container memory limit from 256 MB to 512 MB.",
+          "Set maxmemory to 400mb.",
+          "Set maxmemory-policy to allkeys-lru.",
+          "Set save to an empty value to remove RDB snapshot pressure.",
+        ],
+        outcomeVerification: [
+          "Campaigns 5006, 5002, and 5001 resumed and completed after the memory increase.",
+          "Already-running PCNTL-managed sends completed normally.",
+        ],
+        doNotInfer: [
+          "Do not describe this as a full MailWizz outage; other campaigns kept succeeding.",
+          "Do not split the connection drops and mutex behavior into two root causes.",
+          "Do not claim FLUSHDB, manual lock clearing, or disabling PCNTL resolved the incident.",
+          "Do not claim a confirmed container OOM kill; the observed fact was severe memory pressure and intermittent Redis instability.",
+        ],
+      }),
+    },
+  },
+  {
+    server: {
+      id: "10000000-0000-4000-8000-000000000002",
+      hostname: "mailer.galewood.example",
+      panel: "Plesk",
+      region: "eu-west-2",
+    },
+    site: {
+      id: "20000000-0000-4000-8000-000000000002",
+      domain: "mailer.galewood.example",
+      owner: "Galewood Publishing (synthetic)",
+      slaTier: "standard",
+    },
+    service: {
+      id: "30000000-0000-4000-8000-000000000002",
+      kind: "redis",
+      name: "Newsletter queue Redis",
+      status: "healthy_after_remediation",
+      metadata: {
+        synthetic: true,
+        originalContainerMemoryMb: 384,
+        remediatedContainerMemoryMb: 768,
+        originalPolicy: "noeviction",
+        remediatedPolicy: "allkeys-lru",
+      },
+    },
+    incident: {
+      id: "40000000-0000-4000-8000-000000000002",
+      severity: "SEV-3",
+      title: "Newsletter workers stalled as Redis reached a noeviction ceiling",
+      rootCause:
+        "Synthetic incident: cache churn exhausted Redis maxmemory under the noeviction policy, causing lock and queue writes to fail while already-running workers continued.",
+      resolution:
+        "Synthetic resolution: raised the container limit from 384 MB to 768 MB, set maxmemory to 640mb with allkeys-lru, and verified worker leases renewed without clearing live locks.",
+      outcome: "Synthetic outcome: queued newsletter segments drained normally after Redis regained write headroom.",
+      status: "resolved",
+      openedAt: "2026-06-14T09:10:00+01:00",
+      resolvedAt: "2026-06-14T11:45:00+01:00",
+      evidence: addIntegrity({
+        schemaVersion: 1,
+        seedSet,
+        seedKey: "synthetic-galewood-redis-memory-2026-06",
+        provenance: {
+          kind: "synthetic_sibling",
+          synthetic: true,
+        },
+        summary:
+          "Synthetic sibling with partial newsletter stalls, Redis OOM command-not-allowed errors, a saturated container memory ceiling, and successful recovery after adding headroom and replacing noeviction with allkeys-lru.",
+        symptoms: [
+          "Several newsletter segments stopped advancing while existing deliveries continued.",
+          "Workers logged OOM command not allowed errors when renewing leases.",
+        ],
+        diagnostics: [
+          "Redis memory matched maxmemory and the active policy was noeviction.",
+          "SMTP delivery remained healthy and only queue and lock writes failed.",
+        ],
+        transferNotes: {
+          shared: ["partial sending stall", "Redis memory ceiling", "healthy downstream delivery"],
+          changed: ["explicit write rejection rather than intermittent connection drops", "no PCNTL mutex"],
+          doNotTransfer: ["Do not assume MailWizz-specific mutex semantics."],
+        },
+      }),
+    },
+  },
+  {
+    server: {
+      id: "10000000-0000-4000-8000-000000000003",
+      hostname: "campaigns.blueharbor.example",
+      panel: "CyberPanel",
+      region: "us-east-1",
+    },
+    site: {
+      id: "20000000-0000-4000-8000-000000000003",
+      domain: "campaigns.blueharbor.example",
+      owner: "Blue Harbor Events (synthetic)",
+      slaTier: "standard",
+    },
+    service: {
+      id: "30000000-0000-4000-8000-000000000003",
+      kind: "redis",
+      name: "MailWizz Redis session and mutex store",
+      status: "healthy_after_credential_fix",
+      metadata: {
+        synthetic: true,
+        authentication: "requirepass",
+      },
+    },
+    incident: {
+      id: "40000000-0000-4000-8000-000000000003",
+      severity: "SEV-3",
+      title: "MailWizz campaigns paused after a Redis password rotation",
+      rootCause:
+        "Synthetic incident: the Redis requirepass secret was rotated but the MailWizz worker configuration retained the previous password, causing deterministic authentication failures.",
+      resolution:
+        "Synthetic resolution: updated the application secret, restarted workers in a controlled sequence, and confirmed mutex acquisition and queue reads succeeded.",
+      outcome: "Synthetic outcome: all paused campaigns resumed after workers authenticated with the current secret.",
+      status: "resolved",
+      openedAt: "2026-05-03T14:20:00-04:00",
+      resolvedAt: "2026-05-03T15:05:00-04:00",
+      evidence: addIntegrity({
+        schemaVersion: 1,
+        seedSet,
+        seedKey: "synthetic-blueharbor-redis-auth-2026-05",
+        provenance: {
+          kind: "synthetic_sibling",
+          synthetic: true,
+        },
+        summary:
+          "Synthetic sibling with MailWizz campaign stalls and Redis-backed mutex failures, but stable memory and explicit WRONGPASS errors showed a credential mismatch rather than memory pressure.",
+        symptoms: [
+          "Campaigns paused immediately after a scheduled secret rotation.",
+          "Every worker failed Redis operations consistently rather than intermittently.",
+        ],
+        diagnostics: [
+          "Redis memory utilization was normal.",
+          "Logs consistently reported WRONGPASS invalid username-password pair.",
+        ],
+        transferNotes: {
+          shared: ["MailWizz campaign stall", "Redis-backed mutex unavailable"],
+          changed: ["deterministic authentication errors", "normal memory utilization"],
+          doNotTransfer: ["Do not increase memory or change eviction policy without memory-pressure evidence."],
+        },
+      }),
+    },
+  },
+  {
+    server: {
+      id: "10000000-0000-4000-8000-000000000004",
+      hostname: "portal.redwood.example",
+      panel: "ISPConfig",
+      region: "eu-central-1",
+    },
+    site: {
+      id: "20000000-0000-4000-8000-000000000004",
+      domain: "portal.redwood.example",
+      owner: "Redwood Services (synthetic)",
+      slaTier: "standard",
+    },
+    service: {
+      id: "30000000-0000-4000-8000-000000000004",
+      kind: "cron",
+      name: "Nightly backup scheduler",
+      status: "healthy_after_disk_cleanup",
+      metadata: {
+        synthetic: true,
+        scheduler: "cron",
+        affectedFilesystem: "/var",
+      },
+    },
+    incident: {
+      id: "40000000-0000-4000-8000-000000000004",
+      severity: "SEV-3",
+      title: "Nightly backups stopped when inode exhaustion blocked cron temporary files",
+      rootCause:
+        "Synthetic incident: millions of abandoned small cache files exhausted inodes on /var, so the backup cron could not create temporary manifests despite ample free bytes.",
+      resolution:
+        "Synthetic resolution: removed the abandoned cache files, added inode monitoring, and reran the missed backups with checksum verification.",
+      outcome: "Synthetic outcome: the backup schedule recovered and all missed restore points were recreated.",
+      status: "resolved",
+      openedAt: "2026-04-18T02:00:00+02:00",
+      resolvedAt: "2026-04-18T07:30:00+02:00",
+      evidence: addIntegrity({
+        schemaVersion: 1,
+        seedSet,
+        seedKey: "synthetic-redwood-cron-inodes-2026-04",
+        provenance: {
+          kind: "synthetic_sibling",
+          synthetic: true,
+        },
+        summary:
+          "Synthetic structurally different incident: cron-launched backups failed because /var had no free inodes, while memory, Redis, application queues, and network dependencies were healthy.",
+        symptoms: ["Nightly backup jobs exited before creating manifests.", "Application traffic remained normal."],
+        diagnostics: ["Filesystem bytes were available but inode usage was 100%.", "Redis and application workers were healthy."],
+        transferNotes: {
+          shared: ["scheduled work failed"],
+          changed: ["filesystem inode exhaustion", "no campaign or Redis impact"],
+          doNotTransfer: ["Do not apply Redis or PCNTL remediation to filesystem failures."],
+        },
+      }),
+    },
+  },
+  {
+    server: {
+      id: "10000000-0000-4000-8000-000000000005",
+      hostname: "campaigns.lumenpost.example",
+      panel: "Plesk",
+      region: "UK",
+    },
+    site: {
+      id: "20000000-0000-4000-8000-000000000005",
+      domain: "campaigns.lumenpost.example",
+      owner: "Lumen Post (synthetic demo)",
+      slaTier: "standard",
+    },
+    service: {
+      id: "30000000-0000-4000-8000-000000000005",
+      kind: "redis",
+      name: "MailWizz Redis queue and mutex store",
+      status: "degraded_under_investigation",
+      metadata: {
+        synthetic: true,
+        image: "redis:latest",
+        runtime: "Plesk Docker extension",
+        affectedCampaigns: ["DEMO-701", "DEMO-704", "DEMO-709"],
+      },
+    },
+    incident: {
+      id: "40000000-0000-4000-8000-000000000005",
+      severity: "SEV-2",
+      title: "MailWizz campaigns intermittently stalled while Redis approached its container ceiling",
+      rootCause: null,
+      resolution: null,
+      outcome: null,
+      status: "open",
+      openedAt: "2026-08-10T08:15:00+01:00",
+      resolvedAt: null,
+      evidence: addIntegrity({
+        schemaVersion: 1,
+        seedSet,
+        seedKey: "synthetic-active-lumenpost-mailwizz-redis-2026-08",
+        provenance: {
+          kind: "synthetic_demo_alert",
+          synthetic: true,
+          memoryEligible: false,
+        },
+        summary:
+          "Synthetic active demo incident: several MailWizz campaigns stopped advancing while other SES-backed sends continued. Redis is near its container memory ceiling, intermittent Predis disconnects are present, and a PCNTL mutex message requires live process verification before any lock action.",
+        symptoms: [
+          "Three synthetic campaign sends stopped advancing while other sends continued through SES.",
+          "Tracking requests intermittently lost their Redis connection.",
+        ],
+        diagnostics: [
+          "Redis is near its configured container memory ceiling; exact current headroom still requires an operator read.",
+          "Predis connections are intermittently dropping rather than failing authentication consistently.",
+          "A PCNTL mutex reports previously acquired locks, but lock ownership has not yet been checked against live processes.",
+        ],
+        hypotheses: ["Redis memory pressure", "live or stale PCNTL mutex", "downstream delivery failure"],
+        doNotInfer: [
+          "This is a synthetic active incident created only to exercise the live investigation path.",
+          "Do not claim a confirmed root cause until current Redis and process evidence is collected.",
+          "Do not clear a mutex or restart Redis while live PCNTL ownership is unknown.",
+          "Do not copy a historical memory limit without checking the current workload and host capacity.",
+        ],
+      }),
+    },
+  },
+];
+
+function embeddingDocument(record) {
+  const { service, incident } = record;
+  return [
+    `Incident title: ${incident.title}`,
+    `Severity: ${incident.severity}`,
+    `Service: ${service.kind} — ${service.name}`,
+    `Evidence summary: ${incident.evidence.summary}`,
+    `Root cause: ${incident.rootCause ?? "unresolved — hypothesis required"}`,
+    `Resolution: ${incident.resolution ?? "none — active incident"}`,
+    `Outcome: ${incident.outcome ?? "pending"}`,
+  ].join("\n");
+}
+
+async function generateEmbedding(inputText) {
+  const endpoint = `https://bedrock-runtime.${awsRegion}.amazonaws.com/model/${encodeURIComponent(embeddingModelId)}/invoke`;
+  const response = await fetch(endpoint, {
+    method: "POST",
+    headers: {
+      Accept: "application/json",
+      Authorization: `Bearer ${bedrockBearerToken}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      inputText,
+      dimensions: embeddingDimensions,
+      normalize: true,
+      embeddingTypes: ["float"],
+    }),
+  });
+
+  const responseText = await response.text();
+  let payload;
+  try {
+    payload = JSON.parse(responseText);
+  } catch {
+    throw new Error(`Bedrock returned a non-JSON response with HTTP ${response.status}.`);
+  }
+
+  if (!response.ok) {
+    const message = typeof payload.message === "string" ? payload.message : "Bedrock invocation failed.";
+    throw new Error(`Bedrock embedding request failed with HTTP ${response.status}: ${message}`);
+  }
+
+  if (!Array.isArray(payload.embedding) || payload.embedding.length !== embeddingDimensions) {
+    const received = Array.isArray(payload.embedding) ? payload.embedding.length : "no float embedding";
+    throw new Error(`Bedrock returned ${received} dimensions; expected ${embeddingDimensions}.`);
+  }
+
+  if (!payload.embedding.every((value) => Number.isFinite(value))) {
+    throw new Error("Bedrock returned an embedding containing a non-finite value.");
+  }
+
+  return {
+    embedding: payload.embedding,
+    inputTextTokenCount: payload.inputTextTokenCount,
+  };
+}
+
+function vectorLiteral(embedding) {
+  return `[${embedding.join(",")}]`;
+}
+
+const poolOptions = {
+  connectionString,
+  max: 1,
+  application_name: "recallops-phase2-seed",
+  connectionTimeoutMillis: 15_000,
+  idleTimeoutMillis: 5_000,
+};
+
+if (process.env.COCKROACHDB_CA_CERT_PATH) {
+  poolOptions.ssl = {
+    ca: await readFile(process.env.COCKROACHDB_CA_CERT_PATH, "utf8"),
+    rejectUnauthorized: true,
+  };
+}
+
+const pool = new pg.Pool(poolOptions);
+
+try {
+  await pool.query("SELECT 1");
+
+  const preparedEmbeddings = new Map();
+  for (const record of seedRecords) {
+    const existing = await pool.query(
+      `SELECT title,
+              evidence->'integrity'->>'sha256' AS evidence_sha256,
+              embedding IS NOT NULL AS has_embedding
+         FROM incidents
+        WHERE id = $1`,
+      [record.incident.id],
+    );
+
+    if (existing.rowCount === 1) {
+      const row = existing.rows[0];
+      if (
+        row.title !== record.incident.title ||
+        row.evidence_sha256 !== record.incident.evidence.integrity.sha256
+      ) {
+        throw new Error(
+          `Seed ID collision for ${record.incident.id}. Refusing to mutate an existing immutable incident.`,
+        );
+      }
+
+      if (row.has_embedding) {
+        console.log(`SEED_REUSED incident=${record.incident.id} title=${JSON.stringify(record.incident.title)}`);
+        continue;
+      }
+    }
+
+    const generated = await generateEmbedding(embeddingDocument(record));
+    preparedEmbeddings.set(record.incident.id, generated.embedding);
+    console.log(
+      `BEDROCK_EMBEDDING_OK incident=${record.incident.id} dimensions=${generated.embedding.length} input_tokens=${generated.inputTextTokenCount ?? "unknown"}`,
+    );
+  }
+
+  const client = await pool.connect();
+  try {
+    await client.query("BEGIN");
+
+    for (const record of seedRecords) {
+      await client.query(
+        `INSERT INTO servers (id, hostname, panel, region)
+         VALUES ($1, $2, $3, $4)
+         ON CONFLICT (id) DO UPDATE
+         SET hostname = excluded.hostname,
+             panel = excluded.panel,
+             region = excluded.region`,
+        [record.server.id, record.server.hostname, record.server.panel, record.server.region],
+      );
+
+      await client.query(
+        `INSERT INTO sites (id, server_id, domain, owner, sla_tier)
+         VALUES ($1, $2, $3, $4, $5)
+         ON CONFLICT (id) DO UPDATE
+         SET server_id = excluded.server_id,
+             domain = excluded.domain,
+             owner = excluded.owner,
+             sla_tier = excluded.sla_tier`,
+        [
+          record.site.id,
+          record.server.id,
+          record.site.domain,
+          record.site.owner,
+          record.site.slaTier,
+        ],
+      );
+
+      await client.query(
+        `INSERT INTO services (id, site_id, kind, name, status, metadata)
+         VALUES ($1, $2, $3, $4, $5, $6::JSONB)
+         ON CONFLICT (id) DO UPDATE
+         SET site_id = excluded.site_id,
+             kind = excluded.kind,
+             name = excluded.name,
+             status = excluded.status,
+             metadata = excluded.metadata`,
+        [
+          record.service.id,
+          record.site.id,
+          record.service.kind,
+          record.service.name,
+          record.service.status,
+          JSON.stringify(record.service.metadata),
+        ],
+      );
+
+      const embedding = preparedEmbeddings.get(record.incident.id) ?? null;
+      await client.query(
+        `INSERT INTO incidents (
+           id, service_id, severity, title, root_cause, resolution, outcome,
+           status, opened_at, resolved_at, evidence, embedding
+         )
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11::JSONB, $12::VECTOR)
+         ON CONFLICT (id) DO UPDATE
+         SET embedding = COALESCE(incidents.embedding, excluded.embedding)`,
+        [
+          record.incident.id,
+          record.service.id,
+          record.incident.severity,
+          record.incident.title,
+          record.incident.rootCause,
+          record.incident.resolution,
+          record.incident.outcome,
+          record.incident.status,
+          record.incident.openedAt,
+          record.incident.resolvedAt,
+          JSON.stringify(record.incident.evidence),
+          embedding ? vectorLiteral(embedding) : null,
+        ],
+      );
+    }
+
+    await client.query("COMMIT");
+  } catch (error) {
+    await client.query("ROLLBACK");
+    throw error;
+  } finally {
+    client.release();
+  }
+
+  const stored = await pool.query(
+    `SELECT count(*)::INT AS seed_count,
+            count(embedding)::INT AS embedded_count,
+            count(*) FILTER (WHERE evidence->'provenance'->>'synthetic' = 'false')::INT AS real_count,
+            count(*) FILTER (WHERE evidence->'provenance'->>'synthetic' = 'true')::INT AS synthetic_count
+       FROM incidents
+      WHERE evidence->>'seedSet' = $1`,
+    [seedSet],
+  );
+
+  const counts = {
+    seedCount: Number(stored.rows[0].seed_count),
+    embeddedCount: Number(stored.rows[0].embedded_count),
+    realCount: Number(stored.rows[0].real_count),
+    syntheticCount: Number(stored.rows[0].synthetic_count),
+  };
+  if (
+    counts.seedCount !== seedRecords.length ||
+    counts.embeddedCount !== seedRecords.length ||
+    counts.realCount !== 1 ||
+    counts.syntheticCount !== seedRecords.length - 1
+  ) {
+    throw new Error(`Stored seed verification failed: ${JSON.stringify(counts)}`);
+  }
+
+  const demoQuery = [
+    "Fresh MailWizz incident on another site.",
+    "Several campaigns are stalled while other SES deliveries still succeed.",
+    "A Redis Docker container is near its memory ceiling and Predis connections drop intermittently.",
+    "The PCNTL mutex reports processes already running and previously acquired locks.",
+    "Find the closest historical incident without assuming that lock deletion is safe.",
+  ].join(" ");
+  const queryEmbedding = await generateEmbedding(demoQuery);
+  const queryVector = vectorLiteral(queryEmbedding.embedding);
+
+  const matches = await pool.query(
+    `SELECT id,
+            title,
+            severity,
+            evidence->'provenance'->>'synthetic' AS synthetic,
+            round((embedding <-> $1::VECTOR)::DECIMAL, 6)::STRING AS distance
+       FROM incidents
+      WHERE evidence->>'seedSet' = $2
+        AND status = 'resolved'
+      ORDER BY embedding <-> $1::VECTOR
+      LIMIT 4`,
+    [queryVector, seedSet],
+  );
+
+  const expectedTopMatchId = seedRecords[0].incident.id;
+  if (matches.rows[0]?.id !== expectedTopMatchId) {
+    throw new Error(
+      `Vector retrieval did not rank the real Riddimstream incident first. Received ${matches.rows[0]?.id ?? "no match"}.`,
+    );
+  }
+
+  const plan = await pool.query(
+    `EXPLAIN SELECT id, title
+       FROM incidents
+      ORDER BY embedding <-> $1::VECTOR
+      LIMIT 4`,
+    [queryVector],
+  );
+  const planText = plan.rows.map((row) => Object.values(row)[0]).join("\n");
+  if (!planText.includes("vector search") || !planText.includes("incidents_embedding_idx")) {
+    throw new Error("CockroachDB query plan did not use incidents_embedding_idx for vector search.");
+  }
+
+  console.log(
+    `COCKROACHDB_SEED_OK incidents=${counts.seedCount} embedded=${counts.embeddedCount} real=${counts.realCount} synthetic=${counts.syntheticCount}`,
+  );
+  for (const [index, match] of matches.rows.entries()) {
+    console.log(
+      `VECTOR_MATCH rank=${index + 1} distance=${match.distance} synthetic=${match.synthetic} title=${JSON.stringify(match.title)}`,
+    );
+  }
+  console.log("VECTOR_INDEX_PLAN_OK index=incidents_embedding_idx operator=<->");
+} finally {
+  await pool.end();
+}

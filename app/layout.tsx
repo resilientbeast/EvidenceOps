@@ -13,9 +13,9 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "RecallOps — Agentic Incident Command",
+  title: "EvidenceOps — Agentic Incident Command",
   description:
-    "Ground data and ML incident response in live lineage and durable agentic memory.",
+    "Evidence-grounded infrastructure incident response with durable agentic memory.",
   icons: {
     icon: "/favicon.svg",
     shortcut: "/favicon.svg",

@@ -28,7 +28,8 @@ export async function POST(
       return Response.json({ error: error.message } satisfies ApiErrorResponse, { status: 503 });
     }
     if (error instanceof AiEvidenceValidationError) {
-      return Response.json({ error: "The model output did not pass RecallOps evidence validation. Please run it again." } satisfies ApiErrorResponse, { status: 422 });
+      console.error("EvidenceOps evidence validation failed:", error.message);
+      return Response.json({ error: "The model output did not pass EvidenceOps evidence validation. Please run it again." } satisfies ApiErrorResponse, { status: 422 });
     }
     return Response.json(
       { error: "The AI investigation endpoint encountered an unexpected error. Please try again." } satisfies ApiErrorResponse,

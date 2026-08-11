@@ -1,8 +1,8 @@
-# RecallOps — Product and Engineering Specification
+# EvidenceOps — Product and Engineering Specification
 
 ## 1. Product thesis
 
-RecallOps is an evidence-gated incident command center for data and ML
+EvidenceOps is an evidence-gated incident command center for data and ML
 operations. It combines two types of context that are normally disconnected:
 
 - **Live organizational context from DataHub:** ownership, schema, lineage, and
@@ -10,7 +10,7 @@ operations. It combines two types of context that are normally disconnected:
 - **Durable agentic memory in PostgreSQL:** resolved incidents, their evidence,
   root causes, bounded actions, outcomes, and verification requirements.
 
-> DataHub knows what an incident can affect; RecallOps remembers what worked,
+> DataHub knows what an incident can affect; EvidenceOps remembers what worked,
 > why it worked, and what must be re-verified.
 
 The system treats historical resolution as a diagnostic lead, not an authority.
