@@ -21,6 +21,7 @@
     "ai:bridge": "node --env-file-if-exists=.env.local scripts/aimlapi-bridge.mjs",
     "cockroach:seed": "node --env-file-if-exists=.env scripts/seed-cockroach-memory.mjs",
     "cockroach:phase3:verify": "node --env-file-if-exists=.env scripts/verify-cockroach-phase3.mjs",
+    "cockroach:mcp:smoke": "node --env-file-if-exists=.env scripts/cockroach-mcp-smoke.mjs",
     "bedrock:reasoning:smoke": "node --env-file-if-exists=.env scripts/bedrock-converse-smoke.mjs",
     "bedrock:anthropic-native:smoke": "node --env-file-if-exists=.env scripts/bedrock-reasoning-smoke.mjs",
     "bedrock:models": "node --env-file-if-exists=.env scripts/bedrock-list-models.mjs",

@@ -59,7 +59,7 @@ export interface InfrastructureContext {
   site: InfrastructureSite;
   service: InfrastructureService;
   observedAt: string;
-  accessPath: "cockroachdb-sql";
+  accessPath: "cockroachdb-sql" | "cockroachdb-managed-mcp";
 }
 
 export interface Hypothesis {

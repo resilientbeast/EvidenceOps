@@ -4,7 +4,7 @@ import type { InfrastructureContext } from "@/src/domain/incident";
 
 type Queryable = Pick<Pool, "query"> | Pick<PoolClient, "query">;
 
-interface CatalogRow {
+export interface CatalogRow {
   server_id: string;
   hostname: string;
   panel: string | null;
@@ -32,7 +32,11 @@ function objectValue(value: unknown): Record<string, unknown> {
     : {};
 }
 
-export function mapCatalogRow(row: CatalogRow, observedAt = new Date().toISOString()): InfrastructureContext {
+export function mapCatalogRow(
+  row: CatalogRow,
+  observedAt = new Date().toISOString(),
+  accessPath: InfrastructureContext["accessPath"] = "cockroachdb-sql",
+): InfrastructureContext {
   return {
     server: {
       id: row.server_id,
@@ -56,7 +60,7 @@ export function mapCatalogRow(row: CatalogRow, observedAt = new Date().toISOStri
       metadata: objectValue(row.service_metadata),
     },
     observedAt,
-    accessPath: "cockroachdb-sql",
+    accessPath,
   };
 }
 

@@ -412,7 +412,9 @@ export function IncidentConsole({ initialIncident }: IncidentConsoleProps) {
                   </p>
                   <p>{catalogContext.service.name} · {catalogContext.service.status ?? "status unknown"}</p>
                   <small className="evidence-refs">
-                    Via CockroachDB SQL · Observed {new Date(catalogContext.observedAt).toLocaleTimeString()}
+                    {catalogContext.accessPath === "cockroachdb-managed-mcp"
+                      ? "Via CockroachDB Managed MCP"
+                      : "Via CockroachDB SQL"} · Observed {new Date(catalogContext.observedAt).toLocaleTimeString()}
                   </small>
                 </div>
               ) : (
