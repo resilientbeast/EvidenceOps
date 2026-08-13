@@ -80,3 +80,11 @@ it never prevents the incident investigation from continuing.
 `ccloud` uses its own authenticated session. Do not copy a CockroachDB Managed
 MCP API key or any browser/session credential into application environment
 files.
+
+## Pinned Agent Skills diagnostic
+
+EvidenceOps also records the output of the pinned
+[`auditing-table-statistics`](cockroachdb-agent-skills.md) skill as
+`EVD-TABLE-STATISTICS`. Its adapter permits only `SHOW STATISTICS FOR TABLE
+defaultdb.public.incidents`; it does not expose a general skill loader, SQL
+executor, or model tool.

@@ -1,5 +1,6 @@
 import { z } from "zod";
 import type { ClusterHealthEvidenceProvider } from "@/src/adapters/cluster-health/ccloud-cluster-health";
+import type { TableStatisticsEvidenceProvider } from "@/src/adapters/table-statistics/cockroach-table-statistics";
 import type { Incident } from "@/src/domain/incident";
 
 const defaultMaxTokens = 4_096;
@@ -376,17 +377,24 @@ export async function runAiInvestigation(
   incident: Incident,
   environment: Record<string, string | undefined> = process.env,
   clusterHealth: ClusterHealthEvidenceProvider,
+  tableStatistics: TableStatisticsEvidenceProvider,
 ): Promise<Incident> {
   const bearerToken = environment.AWS_BEARER_TOKEN_BEDROCK;
   const model = environment.BEDROCK_REASONING_MODEL_ID;
   if (!bearerToken || !environment.AWS_REGION || !model) throw new AiInvestigationUnavailableError();
 
-  const clusterHealthEvidence = await clusterHealth.observe();
+  const [clusterHealthEvidence, tableStatisticsEvidence] = await Promise.all([
+    clusterHealth.observe(),
+    tableStatistics.observe(),
+  ]);
   const incidentWithClusterHealth: Incident = {
     ...incident,
     evidence: [
-      ...incident.evidence.filter((evidence) => evidence.id !== clusterHealthEvidence.id),
+      ...incident.evidence.filter((evidence) => (
+        evidence.id !== clusterHealthEvidence.id && evidence.id !== tableStatisticsEvidence.id
+      )),
       clusterHealthEvidence,
+      tableStatisticsEvidence,
     ],
   };
   const evidenceBundle = readOnlyEvidenceBundle(incidentWithClusterHealth);

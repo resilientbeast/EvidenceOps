@@ -1,6 +1,7 @@
 import { getConfiguredIncidentRepository } from "@/src/application/configured-incident-repository";
 import { getConfiguredClusterHealthEvidenceProvider } from "@/src/application/configured-cluster-health";
 import { IncidentNotFoundError } from "@/src/application/errors";
+import { getConfiguredTableStatisticsEvidenceProvider } from "@/src/application/configured-table-statistics";
 import { readIncident } from "@/src/application/read-incident";
 import {
   AiEvidenceValidationError,
@@ -22,6 +23,7 @@ export async function POST(
       incident,
       process.env,
       getConfiguredClusterHealthEvidenceProvider(),
+      getConfiguredTableStatisticsEvidenceProvider(),
     );
     const savedIncident = await repository.saveAgentRun(generatedIncident);
     return Response.json({ incident: savedIncident } satisfies IncidentResponse);

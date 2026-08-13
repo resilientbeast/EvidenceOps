@@ -15,7 +15,7 @@ export type EvidenceSourceSystem =
 
 export interface Evidence {
   id: string;
-  kind: "assertion" | "lineage" | "schema" | "historical-memory" | "cluster-health" | "action";
+  kind: "assertion" | "lineage" | "schema" | "historical-memory" | "cluster-health" | "table-statistics" | "action";
   sourceSystem: EvidenceSourceSystem;
   sourceRef: string;
   observedAt: string;
