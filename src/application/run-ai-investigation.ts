@@ -1,4 +1,5 @@
 import { z } from "zod";
+import type { ClusterHealthEvidenceProvider } from "@/src/adapters/cluster-health/ccloud-cluster-health";
 import type { Incident } from "@/src/domain/incident";
 
 const defaultMaxTokens = 4_096;
@@ -374,12 +375,21 @@ export function isAiInvestigationConfigured(environment: Record<string, string |
 export async function runAiInvestigation(
   incident: Incident,
   environment: Record<string, string | undefined> = process.env,
+  clusterHealth: ClusterHealthEvidenceProvider,
 ): Promise<Incident> {
   const bearerToken = environment.AWS_BEARER_TOKEN_BEDROCK;
   const model = environment.BEDROCK_REASONING_MODEL_ID;
   if (!bearerToken || !environment.AWS_REGION || !model) throw new AiInvestigationUnavailableError();
 
-  const evidenceBundle = readOnlyEvidenceBundle(incident);
+  const clusterHealthEvidence = await clusterHealth.observe();
+  const incidentWithClusterHealth: Incident = {
+    ...incident,
+    evidence: [
+      ...incident.evidence.filter((evidence) => evidence.id !== clusterHealthEvidence.id),
+      clusterHealthEvidence,
+    ],
+  };
+  const evidenceBundle = readOnlyEvidenceBundle(incidentWithClusterHealth);
   const output = await generateStructuredInvestigation(bearerToken, model, evidenceBundle, environment);
-  return applyAiInvestigation(incident, output, model);
+  return applyAiInvestigation(incidentWithClusterHealth, output, model);
 }

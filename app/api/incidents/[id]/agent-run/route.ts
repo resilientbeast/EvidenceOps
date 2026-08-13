@@ -1,4 +1,5 @@
 import { getConfiguredIncidentRepository } from "@/src/application/configured-incident-repository";
+import { getConfiguredClusterHealthEvidenceProvider } from "@/src/application/configured-cluster-health";
 import { IncidentNotFoundError } from "@/src/application/errors";
 import { readIncident } from "@/src/application/read-incident";
 import {
@@ -17,7 +18,11 @@ export async function POST(
 
   try {
     const incident = await readIncident(id, repository);
-    const generatedIncident = await runAiInvestigation(incident);
+    const generatedIncident = await runAiInvestigation(
+      incident,
+      process.env,
+      getConfiguredClusterHealthEvidenceProvider(),
+    );
     const savedIncident = await repository.saveAgentRun(generatedIncident);
     return Response.json({ incident: savedIncident } satisfies IncidentResponse);
   } catch (error) {

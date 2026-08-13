@@ -7,6 +7,7 @@ export type RiskClass = "read" | "simulate" | "write-low-risk" | "write-high-ris
 export type EvidenceSourceSystem =
   | "datahub"
   | "cockroachdb"
+  | "cockroachdb-cloud"
   | "bedrock"
   | "postgresql"
   | "action-runner"
@@ -14,7 +15,7 @@ export type EvidenceSourceSystem =
 
 export interface Evidence {
   id: string;
-  kind: "assertion" | "lineage" | "schema" | "historical-memory" | "action";
+  kind: "assertion" | "lineage" | "schema" | "historical-memory" | "cluster-health" | "action";
   sourceSystem: EvidenceSourceSystem;
   sourceRef: string;
   observedAt: string;

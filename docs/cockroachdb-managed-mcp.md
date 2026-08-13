@@ -60,3 +60,23 @@ The returned context must contain:
 ```
 
 The dashboard renders the same provenance as **Via CockroachDB Managed MCP**.
+
+## ccloud cluster-health evidence
+
+Before each model investigation, EvidenceOps runs this bounded, read-only
+command and adds its result to the one immutable evidence bundle as
+`EVD-CLUSTER-HEALTH`:
+
+```bash
+ccloud cluster info recallops-agentic-memory --quiet --output json
+```
+
+Set `CCLOUD_CLUSTER_NAME` to the cluster name and, when needed, use
+`CCLOUD_COMMAND` for the absolute CLI path. The check times out after five
+seconds by default and is cached for 30 seconds. A missing CLI, expired login,
+timeout, or malformed response produces citeable `unknown` health evidence;
+it never prevents the incident investigation from continuing.
+
+`ccloud` uses its own authenticated session. Do not copy a CockroachDB Managed
+MCP API key or any browser/session credential into application environment
+files.
