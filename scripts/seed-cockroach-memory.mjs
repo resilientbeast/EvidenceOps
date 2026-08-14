@@ -217,6 +217,95 @@ const seedRecords = [
   },
   {
     server: {
+      id: "10000000-0000-4000-8000-000000000006",
+      hostname: "not-recorded",
+      panel: "Plesk Obsidian",
+      region: "not-recorded",
+    },
+    site: {
+      id: "20000000-0000-4000-8000-000000000006",
+      domain: "linea-research.co.uk",
+      owner: "Linea Research",
+      slaTier: "single-site",
+    },
+    service: {
+      id: "30000000-0000-4000-8000-000000000006",
+      kind: "php-fpm",
+      name: "WordPress PHP 8.3-FPM frontend",
+      status: "healthy_after_remediation",
+      metadata: {
+        runtime: "Ubuntu",
+        panel: "Plesk Obsidian",
+        phpVersion: "8.3-FPM",
+        pmMaxChildren: 10,
+        incidentScope: "single-site",
+        serverHostname: "not-recorded",
+        serverRegion: "not-recorded",
+      },
+    },
+    incident: {
+      id: "40000000-0000-4000-8000-000000000006",
+      severity: "SEV-2",
+      title: "PHP-FPM pool exhausted by live Elementor regeneration on frontend requests",
+      rootCause:
+        "Elementor and Elementor Pro regenerated dynamic CSS and design-system assets during public frontend requests, including database writes. With pm.max_children fixed at 10, ten concurrent 5-7 second requests exhausted the PHP 8.3-FPM pool. The underlying failure was live regeneration work without full-page caching, amplified by Query Monitor running in production, rather than raw traffic volume or server capacity.",
+      resolution:
+        "Client confirmed the remediation worked: Query Monitor was disabled in production, Elementor CSS and design-system assets were regenerated through admin tools, Elementor uploads permissions were verified, WordPress-aware full-page caching and managed wp-cron were enabled, and pm.max_children was retained at 10 pending measurement rather than raised as a band-aid.",
+      outcome:
+        "Client confirmed that the recurring PHP-FPM max_children alerts stopped after remediation. The exact resolution timestamp was not recorded, and this transcript contains no confirmed 502, 503, or 504 response.",
+      status: "resolved",
+      openedAt: "2026-07-26T00:13:00+01:00",
+      resolvedAt: null,
+      evidence: addIntegrity({
+        schemaVersion: 1,
+        seedSet,
+        seedKey: "real-linea-research-elementor-php-fpm-2026-07",
+        provenance: {
+          kind: "operator_report",
+          synthetic: false,
+        },
+        summary:
+          "A single-site Plesk Obsidian WordPress server emitted recurring PHP-FPM max_children alerts for days despite modest traffic. Slow logs captured concurrent frontend requests spending 5.4-6.7 seconds in Elementor regeneration paths that performed database writes. Client-confirmed remediation removed live regeneration and debug overhead, added caching, and stopped the alerts.",
+        timeContext: {
+          timezone: "Europe/London",
+          precision: "first_evidenced_timestamp_with_unrecorded_resolution_time",
+          firstEvidencedAt: "2026-07-26T00:13:00+01:00",
+          observedThroughDate: "2026-08-01",
+          resolvedAt: "not-recorded",
+        },
+        symptoms: [
+          "Plesk monitoring reported that PHP-FPM reached pm.max_children = 10 roughly every 15-60 minutes from at least 2026-07-26 through 2026-08-01.",
+          "The client pressed for a root cause while the site remained available and self-recovered between alerts.",
+        ],
+        diagnostics: [
+          "Access-log analysis showed only 30-66 requests per minute, ruling out raw request volume as the direct cause.",
+          "A five-second PHP-FPM slow-log threshold captured multiple concurrent public index.php requests running for 5.4-6.7 seconds on 2026-08-01.",
+          "Captured traces showed Elementor and Elementor Pro stylesheet-manager generate/update_file paths performing live dynamic CSS and design-system regeneration, including mysqli_query and wpdb delete_option/delete_meta writes.",
+          "The same traces included Elementor Pro nav-menu and dynamic-tag widgets, Virtue Premium header and Google-font processing, Yoast SEO frontend metadata generation, and Query Monitor wrapping database calls in production.",
+        ],
+        resolutionActions: [
+          "Disabled Query Monitor in production.",
+          "Regenerated Elementor CSS and design-system files once through WordPress admin tools instead of visitor requests.",
+          "Verified ownership and write permissions for wp-content/uploads/elementor/.",
+          "Enabled WordPress-aware full-page caching while excluding admin, cron, and dynamic routes.",
+          "Moved wp-cron to Plesk-managed scheduling and kept pm.max_children at 10 until measured.",
+        ],
+        outcomeVerification: [
+          "Client confirmed the remediation worked and the recurring max_children alerts stopped.",
+          "The exact resolution time was not recorded.",
+        ],
+        doNotInfer: [
+          "Do not describe this as a traffic-volume or generic capacity incident.",
+          "Do not claim an OS-level OOM kill, full server crash, or confirmed 502, 503, or 504 response.",
+          "Do not treat BackupBuddy as this incident's trigger; a separate BackupBuddy path issue was not in the slow-log capture.",
+          "Do not claim a specific server hostname, region, or exact resolution timestamp; they were not recorded.",
+          "Do not raise pm.max_children as the resolution without first removing live regeneration work and measuring the resulting workload.",
+        ],
+      }),
+    },
+  },
+  {
+    server: {
       id: "10000000-0000-4000-8000-000000000003",
       hostname: "campaigns.blueharbor.example",
       panel: "CyberPanel",
@@ -620,7 +709,7 @@ try {
   if (
     counts.seedCount !== seedRecords.length ||
     counts.embeddedCount !== seedRecords.length ||
-    counts.realCount !== 1 ||
+    counts.realCount !== 2 ||
     counts.syntheticCount !== seedRecords.length - 1
   ) {
     throw new Error(`Stored seed verification failed: ${JSON.stringify(counts)}`);
