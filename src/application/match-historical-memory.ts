@@ -74,7 +74,7 @@ function infrastructureDelta(incident: Incident, record: HistoricalMemoryRecord)
     sharedContext: shared.length ? shared : ["The semantic evidence bundle is similar, but no structured infrastructure field is identical."],
     changedContext: changed,
     nonTransferableAssumptions: record.verificationRequirements,
-    recommendation: `Reuse the diagnostic sequence from ${record.incidentId}, not its resolution. Verify current Redis pressure and live lock ownership before proposing any capacity or lock change.`,
+    recommendation: `Reuse the diagnostic sequence from ${record.incidentId}, not its resolution. Verify the current service condition before proposing any remediation change.`,
   };
 }
 

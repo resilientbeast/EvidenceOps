@@ -39,7 +39,7 @@ npm run postgres:smoke
 ```
 
 On first app access, the adapter enables `vector`, creates `incident_dossiers`
-and `historical_incident_memory`, and inserts `INC-247` plus the resolved
+and `historical_incident_memory`, and inserts the Linea PHP-FPM seed record.
 memory records only if absent. The app then changes its header from `Memory
 fixture` to `PostgreSQL connected`.
 
@@ -47,7 +47,7 @@ fixture` to `PostgreSQL connected`.
 
 1. Load the app and confirm the PostgreSQL connection label.
 2. Record a simulated approval or review request.
-3. Restart the app and reload `INC-247`.
+3. Restart the app and reload the Linea seed record.
 4. Open the audit replay: the decision and operator event remain because they
    are stored in the persistent dossier.
 

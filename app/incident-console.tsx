@@ -95,7 +95,7 @@ export function IncidentConsole({ initialIncident }: IncidentConsoleProps) {
 
   const isFixture = incident.mode === "fixture";
   const isPersistentMemory = incident.memoryMode !== "fixture";
-  const sourceLabel = isFixture ? "Fixture · seeded demo" : "CockroachDB · live";
+  const sourceLabel = isFixture ? "Seeded evidence · Linea Research" : "CockroachDB · live";
   const decision = incident.decision?.kind;
 
   async function runAiInvestigation() {
@@ -178,7 +178,7 @@ export function IncidentConsole({ initialIncident }: IncidentConsoleProps) {
           <button className="rail-button" aria-label="Incident memory" type="button">
             <span>◎</span>
           </button>
-          <button className="rail-button" aria-label="Data lineage" type="button">
+          <button className="rail-button" aria-label="Affected operational scope" type="button">
             <span>◇</span>
           </button>
         </nav>
@@ -194,7 +194,7 @@ export function IncidentConsole({ initialIncident }: IncidentConsoleProps) {
             <h1>Incident command</h1>
           </div>
           <div className="topbar-actions">
-            <span className="connection"><i /> {isFixture ? "DataHub fixture" : "Infra catalog connected"}</span>
+            <span className="connection"><i /> {isFixture ? "Seeded incident record" : "CockroachDB catalog"}</span>
             <span className="connection"><i /> {incident.memoryMode === "cockroachdb" ? "CockroachDB vector memory" : isPersistentMemory ? "PostgreSQL connected" : "Memory fixture"}</span>
             <span className="connection">{incident.agentRun ? `AI verified · ${incident.agentRun.model}` : "AI run pending"}</span>
             <button className="icon-button" aria-label="More actions" type="button">•••</button>
@@ -207,7 +207,7 @@ export function IncidentConsole({ initialIncident }: IncidentConsoleProps) {
             <span className="pulse" />
           </div>
           <div className="incident-title">
-            <p className="eyebrow">{isFixture ? "DEMO FIXTURE" : "ACTIVE"} · {incident.id}</p>
+            <p className="eyebrow">{isFixture ? "SEEDED RECORD" : "ACTIVE"} · {incident.id}</p>
             <h2>{incident.title}</h2>
             <p>
               Detected by <strong>{incident.assertionName}</strong> · Opened {incident.openedAt
@@ -226,10 +226,10 @@ export function IncidentConsole({ initialIncident }: IncidentConsoleProps) {
           <button
             className="quiet-button"
             disabled
-            title={isFixture ? "Available after DataHub is connected" : "Infrastructure context verified in CockroachDB"}
+            title={isFixture ? "Seeded incident evidence" : "Infrastructure context verified in CockroachDB"}
             type="button"
           >
-            {isFixture ? "Open in DataHub ↗" : "Catalog evidence verified"}
+            {isFixture ? "Seeded evidence verified" : "Catalog evidence verified"}
           </button>
         </div>
 
@@ -243,7 +243,7 @@ export function IncidentConsole({ initialIncident }: IncidentConsoleProps) {
                 </div>
                 <span className="source-badge">{sourceLabel}</span>
               </div>
-              <div className="lineage" aria-label="Affected data lineage">
+              <div className="lineage" aria-label="Affected operational scope">
                 <div className="lineage-node failed" title={sourceAsset.evidenceId}>
                   <span className="node-type">{nodeType(sourceAsset)}</span>
                   <strong>{sourceAsset.name}</strong>
@@ -280,7 +280,7 @@ export function IncidentConsole({ initialIncident }: IncidentConsoleProps) {
                 </div>
                 <div className="agent-run-control">
                   <span className="agent-count">
-                    {incident.agentRun ? "AI output · evidence validated" : isFixture ? "fixture investigation" : "evidence-bundle investigation"}
+                    {incident.agentRun ? "AI output · evidence validated" : isFixture ? "seeded evidence investigation" : "evidence-bundle investigation"}
                   </span>
                   <button className="quiet-button" disabled={isRunningAi} onClick={runAiInvestigation} type="button">
                     {isRunningAi ? "Running AI…" : incident.agentRun ? "Run AI again" : "Run AI investigation"}
@@ -351,7 +351,7 @@ export function IncidentConsole({ initialIncident }: IncidentConsoleProps) {
           <aside className="secondary-column">
             <section className="panel memory-panel">
               <div className="memory-orbit"><span>{incident.historicalMatch.similarity}%</span><small>match</small></div>
-              <p className="eyebrow">{isPersistentMemory ? "PERSISTED HISTORICAL MATCH" : "HISTORICAL FIXTURE MATCH"}</p>
+              <p className="eyebrow">{isPersistentMemory ? "PERSISTED HISTORICAL MATCH" : "HISTORICAL SEED MATCH"}</p>
               <h3>{incident.historicalMatch.incidentId} · {incident.historicalMatch.title}</h3>
               <span className="memory-count">{incident.historicalMemoryCount} stored resolutions searched</span>
               <p className="memory-summary">{incident.historicalMatch.summary}</p>
@@ -382,7 +382,7 @@ export function IncidentConsole({ initialIncident }: IncidentConsoleProps) {
             <section className="panel timeline-panel">
               <div className="panel-heading compact-heading">
                 <h3>Investigation log</h3>
-                <span>{isFixture ? "seeded" : "live"}</span>
+                <span>{isFixture ? "seeded record" : "live"}</span>
               </div>
               <ol className="timeline">
                 {incident.events.map((event) => (
@@ -397,7 +397,7 @@ export function IncidentConsole({ initialIncident }: IncidentConsoleProps) {
             <section className="panel live-context-panel" aria-live="polite">
               <div className="panel-heading compact-heading">
                 <div>
-                  <p className="eyebrow">{isFixture ? "READ-ONLY LOCAL DATAHUB" : "READ-ONLY COCKROACHDB CATALOG"}</p>
+                  <p className="eyebrow">{isFixture ? "SEEDED INCIDENT EVIDENCE" : "READ-ONLY COCKROACHDB CATALOG"}</p>
                   <h3>Verified catalog context</h3>
                 </div>
                 <span className={catalogContext ? "live-state connected" : "live-state"}>
@@ -419,8 +419,8 @@ export function IncidentConsole({ initialIncident }: IncidentConsoleProps) {
                 </div>
               ) : (
                 <div className="live-context-copy unavailable">
-                  <p>{catalogContextError ?? (isFixture ? "Local DataHub context is optional for the fixture." : "Checking the CockroachDB catalog…")}</p>
-                  <small>Fixture investigation remains available without a catalog connection.</small>
+                  <p>{catalogContextError ?? (isFixture ? "This seeded record includes verified incident evidence." : "Checking the CockroachDB catalog…")}</p>
+                  <small>The seeded incident remains available without a catalog connection.</small>
                 </div>
               )}
             </section>

@@ -5,7 +5,6 @@ export type DecisionKind = "approved" | "review";
 export type RiskClass = "read" | "simulate" | "write-low-risk" | "write-high-risk";
 
 export type EvidenceSourceSystem =
-  | "datahub"
   | "cockroachdb"
   | "cockroachdb-cloud"
   | "bedrock"
@@ -15,7 +14,7 @@ export type EvidenceSourceSystem =
 
 export interface Evidence {
   id: string;
-  kind: "assertion" | "lineage" | "schema" | "historical-memory" | "cluster-health" | "table-statistics" | "action";
+  kind: "assertion" | "service-topology" | "runtime-trace" | "historical-memory" | "cluster-health" | "table-statistics" | "action";
   sourceSystem: EvidenceSourceSystem;
   sourceRef: string;
   observedAt: string;

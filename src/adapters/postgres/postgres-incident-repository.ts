@@ -1,7 +1,7 @@
 import { Pool } from "pg";
 import type { IncidentRepository, RecordDecisionInput } from "@/src/adapters/incident-repository";
 import type { HistoricalMemoryRecord, Incident } from "@/src/domain/incident";
-import { inc247Fixture } from "@/src/fixtures/inc-247";
+import { lineaPhpFpmFixture } from "@/src/fixtures/linea-php-fpm";
 import { historicalMemoryFixtures } from "@/src/fixtures/historical-memory";
 
 const createVectorExtensionSql = "CREATE EXTENSION IF NOT EXISTS vector";
@@ -42,7 +42,7 @@ export class PostgresIncidentRepository implements IncidentRepository {
         await this.pool.query(createVectorExtensionSql);
         await this.pool.query(createDossiersTableSql);
         await this.pool.query(createHistoricalMemoryTableSql);
-        const seed = { ...cloneIncident(inc247Fixture), memoryMode: "postgres" as const };
+        const seed = { ...cloneIncident(lineaPhpFpmFixture), memoryMode: "postgres" as const };
         await this.pool.query(
           "INSERT INTO incident_dossiers (id, payload) VALUES ($1, $2::JSONB) ON CONFLICT (id) DO NOTHING",
           [seed.id, JSON.stringify(seed)],

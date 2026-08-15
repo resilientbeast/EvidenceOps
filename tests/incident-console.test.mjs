@@ -34,11 +34,11 @@ test("server-renders the incident console", async () => {
 
   const html = await response.text();
   assert.match(html, /<title>EvidenceOps — Agentic Incident Command<\/title>/i);
-  assert.match(html, /NYC Taxi pipeline is 9h 42m stale/);
+  assert.match(html, /PHP-FPM pool exhausted by live Elementor regeneration on frontend requests/);
   assert.match(html, /Competing hypotheses/);
   assert.match(html, /Evidence-gated investigation/);
   assert.match(html, /MATCH DELTA/);
-  assert.match(html, /3(?:<!-- -->)? stored resolutions searched/);
+  assert.match(html, /0(?:<!-- -->)? stored resolutions searched/);
   assert.match(html, /HUMAN DECISION GATE/);
 });
 
@@ -46,11 +46,10 @@ test("fixture mode is explicit and never presented as a live connection", async 
   const response = await render();
   const html = await response.text();
 
-  assert.match(html, /DEMO FIXTURE[\s\S]*INC-247/);
-  assert.match(html, /DataHub fixture/);
+  assert.match(html, /SEEDED RECORD[\s\S]*40000000-0000-4000-8000-000000000006/);
+  assert.match(html, /Seeded incident record/);
   assert.match(html, /Memory fixture/);
-  assert.match(html, /Fixture · seeded demo/);
-  assert.doesNotMatch(html, /DataHub connected/);
+  assert.match(html, /Seeded evidence · Linea Research/);
+  assert.doesNotMatch(html, /third-party catalog/i);
   assert.doesNotMatch(html, /Memory online/);
-  assert.doesNotMatch(html, /DataHub · just now/);
 });

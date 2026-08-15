@@ -129,12 +129,12 @@ function buildIncident(row: IncidentRow): Incident {
   const symptoms = strings(evidenceBundle.symptoms);
   const infrastructure = mapCatalogRow(row);
   const observedAt = iso(row.opened_at) ?? infrastructure.observedAt;
-  const memoryPressureEvidence = diagnostics.find((item) => /memory|222\.5|256 MB/i.test(item));
-  const mutexEvidence = diagnostics.find((item) => /PCNTL|mutex|lock/i.test(item));
   const summary = evidenceSummary(evidenceBundle, row.title);
   const severity = row.severity === "SEV-3" ? "SEV-3" : "SEV-2";
   const metadata = infrastructure.service.metadata;
-  const consumers = Array.isArray(metadata.affectedCampaigns) ? metadata.affectedCampaigns.length : 3;
+  const consumers = Array.isArray(metadata.affectedServices)
+    ? metadata.affectedServices.length
+    : 1;
 
   return {
     id: row.id,
@@ -144,9 +144,9 @@ function buildIncident(row: IncidentRow): Incident {
     title: row.title,
     severity,
     openedAt: iso(row.opened_at),
-    assertionName: "mailwizz_campaign_progress",
+    assertionName: `${row.service_kind}_operational_alert`,
     sourceAssetUrn: `cockroachdb:service:${row.service_id}`,
-    estimatedExposure: "Multi-campaign delivery delay",
+    estimatedExposure: `${row.domain} service availability risk`,
     owner: row.owner ?? row.domain,
     policy: row.sla_tier ? `${row.sla_tier} SLA` : "Operator-reviewed response",
     consumers,
@@ -162,7 +162,7 @@ function buildIncident(row: IncidentRow): Incident {
       },
       {
         id: "EVD-002",
-        kind: "lineage",
+        kind: "service-topology",
         sourceSystem: "cockroachdb",
         sourceRef: `service:${row.service_id}`,
         observedAt: infrastructure.observedAt,
@@ -170,11 +170,11 @@ function buildIncident(row: IncidentRow): Incident {
       },
       {
         id: "EVD-003",
-        kind: "schema",
+        kind: "runtime-trace",
         sourceSystem: "operator",
         sourceRef: `incident:${row.id}:diagnostics`,
         observedAt,
-        summary: [memoryPressureEvidence, mutexEvidence].filter(Boolean).join(" ") || diagnostics[0] || "Current diagnostics remain under review.",
+        summary: diagnostics[0] || "Current diagnostics remain under review.",
       },
       {
         id: "EVD-004",
@@ -198,7 +198,7 @@ function buildIncident(row: IncidentRow): Incident {
         id: row.site_id,
         type: "site",
         name: row.domain,
-        platform: "Site · campaign operations",
+        platform: "Site · service impact",
         status: "delayed",
         evidenceId: "EVD-001",
       },
@@ -210,51 +210,43 @@ function buildIncident(row: IncidentRow): Incident {
         status: "failed",
         evidenceId: "EVD-003",
       },
-      {
-        id: `${row.id}:campaigns`,
-        type: "campaign",
-        name: "Affected campaign sends",
-        platform: "MailWizz · delivery delayed",
-        status: "delayed",
-        evidenceId: "EVD-001",
-      },
     ],
     hypotheses: [
       {
-        id: "redis-memory-pressure",
+        id: "observed-runtime-condition",
         rank: "01",
-        title: "Redis memory pressure",
+        title: "Observed runtime condition",
         confidence: 74,
         verdict: "Leading",
-        summary: memoryPressureEvidence ?? "Redis headroom is a leading condition to verify.",
+        summary: diagnostics[0] ?? "The current evidence bundle identifies a leading condition to verify.",
         supportingEvidenceIds: ["EVD-001", "EVD-003"],
         contradictingEvidenceIds: [],
-        unknowns: ["Current container memory, maxmemory, eviction policy, and restart history require confirmation."],
-        reviewerFinding: "Confirm live Redis memory and process state before transferring any historical remediation.",
+        unknowns: ["The live condition must be independently rechecked before remediation."],
+        reviewerFinding: "Confirm the current service state before transferring any historical remediation.",
       },
       {
-        id: "pcntl-mutex",
+        id: "historical-transfer",
         rank: "02",
-        title: "Stale PCNTL mutex",
+        title: "Historical remediation transfer",
         confidence: 18,
         verdict: "Weakened",
-        summary: mutexEvidence ?? "A mutex symptom may reflect active processes rather than an orphaned lock.",
+        summary: "A prior resolution cannot be applied until the current evidence and differences are verified.",
         supportingEvidenceIds: ["EVD-003"],
         contradictingEvidenceIds: ["EVD-004"],
-        unknowns: ["Whether the lock is orphaned or held by a live PCNTL process."],
-        reviewerFinding: "Do not clear Redis locks until process ownership is independently verified.",
+        unknowns: ["Comparable incident memory is still being retrieved."],
+        reviewerFinding: "Do not transfer an action from historical memory without verifying the current preconditions.",
       },
       {
-        id: "ses-delivery",
+        id: "external-dependency",
         rank: "03",
-        title: "Downstream SES failure",
+        title: "External dependency failure",
         confidence: 8,
         verdict: "Unlikely",
-        summary: "Other campaign deliveries succeeding would contradict a broad SES outage.",
+        summary: "No current evidence establishes a shared external dependency failure.",
         supportingEvidenceIds: [],
         contradictingEvidenceIds: ["EVD-001"],
-        unknowns: ["Per-campaign delivery telemetry has not yet been replayed."],
-        reviewerFinding: "Keep SES as a bounded check, but do not treat it as the leading cause without delivery errors.",
+        unknowns: ["Dependency telemetry has not been reviewed."],
+        reviewerFinding: "Keep this as a bounded check; do not promote it without direct evidence.",
       },
     ],
     historicalMatch: {
@@ -272,21 +264,21 @@ function buildIncident(row: IncidentRow): Incident {
       sharedContext: [],
       changedContext: [],
       nonTransferableAssumptions: ["No historical resolution may be transferred without current-condition verification."],
-      recommendation: "Retrieve historical memory, then reuse its diagnostic sequence only.",
+      recommendation: "Retrieve historical memory, then reuse only its diagnostic sequence after verifying current conditions.",
     },
     investigation: [
-      { id: "INV-001", agent: "investigator", label: "Map current blast radius", finding: "Server, site, service, and campaign scope were read from the CockroachDB catalog and evidence bundle.", evidenceIds: ["EVD-001", "EVD-002"], status: "grounded" },
+      { id: "INV-001", agent: "investigator", label: "Map current blast radius", finding: "Server, site, and service scope were read from the CockroachDB catalog and evidence bundle.", evidenceIds: ["EVD-001", "EVD-002"], status: "grounded" },
       { id: "INV-002", agent: "historian", label: "Retrieve comparable resolution", finding: "CockroachDB vector retrieval ranks resolved incidents by semantic distance.", evidenceIds: ["EVD-004"], status: "grounded" },
-      { id: "INV-003", agent: "planner", label: "Draft bounded remediation", finding: "The plan is limited to read-only verification and a simulated capacity change.", evidenceIds: ["EVD-001", "EVD-003", "EVD-004"], status: "grounded" },
-      { id: "INV-004", agent: "reviewer", label: "Challenge action preconditions", finding: "Execution remains blocked until live memory and lock ownership are confirmed by an operator.", evidenceIds: ["EVD-003", "EVD-004"], status: "challenged" },
+      { id: "INV-003", agent: "planner", label: "Draft bounded remediation", finding: "The plan is limited to read-only verification and a simulated change.", evidenceIds: ["EVD-001", "EVD-003", "EVD-004"], status: "grounded" },
+      { id: "INV-004", agent: "reviewer", label: "Challenge action preconditions", finding: "Execution remains blocked until current service conditions are confirmed by an operator.", evidenceIds: ["EVD-003", "EVD-004"], status: "challenged" },
     ],
     remediationPlan: {
       id: planId(row.id),
       version: 1,
-      objective: "Verify Redis pressure and simulate a bounded memory-headroom change without clearing live locks.",
+      objective: "Verify the current service condition and simulate only a bounded remediation change.",
       riskClass: "simulate",
-      steps: ["Read current Redis and container memory settings", "Verify PCNTL lock ownership", "Simulate a bounded memory-headroom change"],
-      validation: ["Campaign progress resumes", "Redis remains reachable", "No live PCNTL lock is deleted"],
+      steps: ["Read current service and infrastructure state", "Verify the leading condition", "Simulate a bounded remediation change"],
+      validation: ["The leading alert clears", "The service remains reachable", "No unapproved production change is made"],
       rollback: ["Discard the simulation and leave the running service unchanged"],
       evidenceIds: ["EVD-001", "EVD-002", "EVD-003", "EVD-004"],
     },
@@ -319,7 +311,7 @@ function memoryRecord(row: MemoryRow, corpusCount: number): HistoricalMemoryReco
     incidentId: row.id,
     title: row.title,
     sourceAssetUrn: `cockroachdb:service:${row.service_id}`,
-    assertionName: "mailwizz_campaign_progress",
+    assertionName: `${row.service_kind}_operational_alert`,
     severity: row.severity === "SEV-3" ? "SEV-3" : "SEV-2",
     downstreamAssetIds: [row.server_id, row.site_id, row.service_id],
     resolvedAt,

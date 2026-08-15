@@ -43,6 +43,3 @@ yarn-error.log*
 /outputs/
 /output/
 /work/
-
-# Local research exports may contain third-party community content.
-/infra/datahub/.generated/
