@@ -16,6 +16,11 @@ export async function GET() {
         && process.env.AWS_REGION
         && process.env.BEDROCK_REASONING_MODEL_ID,
       ),
+      localAuth: Boolean(
+        process.env.LOCAL_AUTH_EMAIL
+        && process.env.LOCAL_AUTH_PASSWORD
+        && process.env.LOCAL_AUTH_SESSION_SECRET,
+      ),
     },
   });
 }

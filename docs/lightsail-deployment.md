@@ -35,6 +35,11 @@ chmod 600 .env
 Never place `.env` in the Docker build context, a container image, Git, shell
 history, Nginx configuration, or Certbot configuration.
 
+Set `LOCAL_AUTH_EMAIL`, `LOCAL_AUTH_PASSWORD`, and
+`LOCAL_AUTH_SESSION_SECRET` in `/opt/evidenceops/.env`. Use a unique long
+password and a cryptographically random session secret; neither is exposed to
+the browser.
+
 ## 3. Build and start
 
 ```bash
@@ -73,6 +78,8 @@ docker compose -f compose.production.yml ps
 docker compose -f compose.production.yml logs --tail=100 app
 ```
 
-The public verification is not complete until the incident page loads from
-CockroachDB Cloud, a Bedrock GPT-OSS investigation passes evidence validation,
-and the CockroachDB audit replay reloads over HTTPS.
+The public verification is not complete until `/api/health` remains public, an
+unauthenticated `/dashboard` request redirects to the local sign-in page, a
+signed-in local operator can load the incident from CockroachDB Cloud, a Bedrock GPT-OSS
+investigation passes evidence validation, and the CockroachDB audit replay
+reloads over HTTPS.

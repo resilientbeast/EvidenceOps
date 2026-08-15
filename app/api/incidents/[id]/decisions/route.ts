@@ -3,11 +3,14 @@ import { getConfiguredIncidentRepository } from "@/src/application/configured-in
 import { recordDecision } from "@/src/application/record-decision";
 import type { ApiErrorResponse, IncidentResponse } from "@/src/contracts/api";
 import { parseDecisionCommand } from "@/src/contracts/api";
+import { requireAuthenticatedApiUser } from "@/app/api/auth";
 
 export async function POST(
   request: Request,
   { params }: { params: Promise<{ id: string }> },
 ): Promise<Response> {
+  const user = await requireAuthenticatedApiUser(request);
+  if (user instanceof Response) return user;
   const { id } = await params;
   let payload: unknown;
 
@@ -26,7 +29,10 @@ export async function POST(
   }
 
   try {
-    const incident = await recordDecision(command, getConfiguredIncidentRepository());
+    const incident = await recordDecision(
+      { ...command, actorId: user.userId },
+      getConfiguredIncidentRepository(),
+    );
     return Response.json({ incident } satisfies IncidentResponse);
   } catch (error) {
     if (error instanceof IncidentNotFoundError) {

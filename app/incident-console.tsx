@@ -182,8 +182,8 @@ export function IncidentConsole({ initialIncident }: IncidentConsoleProps) {
             <span>◇</span>
           </button>
         </nav>
-        <div className="rail-avatar" aria-label="Operator AR">
-          AR
+        <div className="rail-avatar" aria-label="Authenticated operator">
+          EO
         </div>
       </aside>
 

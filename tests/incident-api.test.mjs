@@ -1,6 +1,8 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
+process.env.NODE_ENV = "test";
+
 async function loadWorker() {
   const workerUrl = new URL("../dist/server/index.js", import.meta.url);
   workerUrl.searchParams.set("test", `${process.pid}-${Date.now()}`);
@@ -16,6 +18,12 @@ function environment() {
   };
 }
 
+function authenticatedRequest(url, init = {}) {
+  const headers = new Headers(init.headers);
+  headers.set("x-evidenceops-test-auth", "fixture");
+  return new Request(url, { ...init, headers });
+}
+
 const executionContext = {
   waitUntil() {},
   passThroughOnException() {},
@@ -24,8 +32,23 @@ const executionContext = {
 test("incident API serves a typed fixture and enforces decision idempotency", async () => {
   const worker = await loadWorker();
 
-  const incidentResponse = await worker.fetch(
+  const healthResponse = await worker.fetch(
+    new Request("http://localhost/api/health"),
+    environment(),
+    executionContext,
+  );
+  assert.equal(healthResponse.status, 200);
+  assert.equal((await healthResponse.json()).status, "ok");
+
+  const unauthenticatedResponse = await worker.fetch(
     new Request("http://localhost/api/incidents/INC-247"),
+    environment(),
+    executionContext,
+  );
+  assert.equal(unauthenticatedResponse.status, 503);
+
+  const incidentResponse = await worker.fetch(
+    authenticatedRequest("http://localhost/api/incidents/INC-247"),
     environment(),
     executionContext,
   );
@@ -39,7 +62,7 @@ test("incident API serves a typed fixture and enforces decision idempotency", as
   assert.equal(initialPayload.incident.decision, undefined);
 
   const unavailableAgentResponse = await worker.fetch(
-    new Request("http://localhost/api/incidents/INC-247/agent-run", { method: "POST" }),
+    authenticatedRequest("http://localhost/api/incidents/INC-247/agent-run", { method: "POST" }),
     environment(),
     executionContext,
   );
@@ -47,7 +70,7 @@ test("incident API serves a typed fixture and enforces decision idempotency", as
   assert.match((await unavailableAgentResponse.json()).error, /AWS_BEARER_TOKEN_BEDROCK/);
 
   const invalidResponse = await worker.fetch(
-    new Request("http://localhost/api/incidents/INC-247/decisions", {
+    authenticatedRequest("http://localhost/api/incidents/INC-247/decisions", {
       method: "POST",
       headers: { "content-type": "application/json" },
       body: JSON.stringify({ decision: "approved" }),
@@ -65,7 +88,7 @@ test("incident API serves a typed fixture and enforces decision idempotency", as
     planVersion: 1,
   };
   const decisionResponse = await worker.fetch(
-    new Request("http://localhost/api/incidents/INC-247/decisions", {
+    authenticatedRequest("http://localhost/api/incidents/INC-247/decisions", {
       method: "POST",
       headers: { "content-type": "application/json" },
       body: JSON.stringify(command),
@@ -80,7 +103,7 @@ test("incident API serves a typed fixture and enforces decision idempotency", as
   assert.equal(decisionPayload.incident.events.length, 5);
 
   const replayResponse = await worker.fetch(
-    new Request("http://localhost/api/incidents/INC-247/replay"),
+    authenticatedRequest("http://localhost/api/incidents/INC-247/replay"),
     environment(),
     executionContext,
   );
@@ -92,7 +115,7 @@ test("incident API serves a typed fixture and enforces decision idempotency", as
   assert.equal(replayPayload.replay.learning.status, "awaiting_human_outcome");
 
   const idempotentReplayResponse = await worker.fetch(
-    new Request("http://localhost/api/incidents/INC-247/decisions", {
+    authenticatedRequest("http://localhost/api/incidents/INC-247/decisions", {
       method: "POST",
       headers: { "content-type": "application/json" },
       body: JSON.stringify(command),
@@ -105,7 +128,7 @@ test("incident API serves a typed fixture and enforces decision idempotency", as
   assert.equal(idempotentReplayPayload.incident.events.length, 5);
 
   const conflictResponse = await worker.fetch(
-    new Request("http://localhost/api/incidents/INC-247/decisions", {
+    authenticatedRequest("http://localhost/api/incidents/INC-247/decisions", {
       method: "POST",
       headers: { "content-type": "application/json" },
       body: JSON.stringify({ ...command, idempotencyKey: "test-approval-2" }),

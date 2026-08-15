@@ -2,11 +2,14 @@ import { IncidentNotFoundError } from "@/src/application/errors";
 import { getConfiguredIncidentRepository } from "@/src/application/configured-incident-repository";
 import { readIncident } from "@/src/application/read-incident";
 import type { ApiErrorResponse, IncidentResponse } from "@/src/contracts/api";
+import { requireAuthenticatedApiUser } from "@/app/api/auth";
 
 export async function GET(
-  _request: Request,
+  request: Request,
   { params }: { params: Promise<{ id: string }> },
 ): Promise<Response> {
+  const authentication = await requireAuthenticatedApiUser(request);
+  if (authentication instanceof Response) return authentication;
   const { id } = await params;
 
   try {

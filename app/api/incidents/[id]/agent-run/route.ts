@@ -9,11 +9,14 @@ import {
   runAiInvestigation,
 } from "@/src/application/run-ai-investigation";
 import type { ApiErrorResponse, IncidentResponse } from "@/src/contracts/api";
+import { requireAuthenticatedApiUser } from "@/app/api/auth";
 
 export async function POST(
-  _request: Request,
+  request: Request,
   { params }: { params: Promise<{ id: string }> },
 ): Promise<Response> {
+  const authentication = await requireAuthenticatedApiUser(request);
+  if (authentication instanceof Response) return authentication;
   const { id } = await params;
   const repository = getConfiguredIncidentRepository();
 

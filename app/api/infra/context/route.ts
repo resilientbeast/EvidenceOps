@@ -1,6 +1,9 @@
 import { getConfiguredInfrastructureCatalog } from "@/src/application/configured-infrastructure-catalog";
+import { requireAuthenticatedApiUser } from "@/app/api/auth";
 
 export async function GET(request: Request) {
+  const authentication = await requireAuthenticatedApiUser(request);
+  if (authentication instanceof Response) return authentication;
   try {
     const incidentId = new URL(request.url).searchParams.get("incidentId")
       ?? process.env.RECALLOPS_ACTIVE_INCIDENT_ID;

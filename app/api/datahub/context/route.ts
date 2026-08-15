@@ -1,8 +1,11 @@
 import { readConfiguredLiveDataHubContext } from "@/src/adapters/datahub/live-context";
+import { requireAuthenticatedApiUser } from "@/app/api/auth";
 
 const defaultSourceUrn = "urn:li:dataset:(urn:li:dataPlatform:hive,fct_users_created,PROD)";
 
-export async function GET() {
+export async function GET(request: Request) {
+  const authentication = await requireAuthenticatedApiUser(request);
+  if (authentication instanceof Response) return authentication;
   try {
     const sourceUrn = process.env.DATAHUB_LIVE_SOURCE_URN ?? defaultSourceUrn;
     return Response.json({ context: await readConfiguredLiveDataHubContext(sourceUrn) });
