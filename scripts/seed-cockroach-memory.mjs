@@ -306,6 +306,85 @@ const seedRecords = [
   },
   {
     server: {
+      id: "10000000-0000-4000-8000-000000000007",
+      hostname: "cyberpanel-containment.example",
+      panel: "CyberPanel",
+      region: "synthetic-aws-region",
+    },
+    site: {
+      id: "20000000-0000-4000-8000-000000000007",
+      domain: "portfolio-containment.example",
+      owner: "Synthetic multi-site customer",
+      slaTier: "standard",
+    },
+    service: {
+      id: "30000000-0000-4000-8000-000000000007",
+      kind: "hosting-panel",
+      name: "CyberPanel management service",
+      status: "healthy_after_compromise_containment",
+      metadata: {
+        synthetic: true,
+        hosting: "AWS Lightsail",
+        affectedServer: "server-2 analogue",
+        affectedComponent: "fastapi_ssh_server",
+        managementPort: 8888,
+      },
+    },
+    incident: {
+      id: "40000000-0000-4000-8000-000000000007",
+      severity: "SEV-2",
+      title: "CyberPanel root-shell component contained after automated JWT exploit exposure",
+      rootCause:
+        "Synthetic incident: a vulnerable CyberPanel fastapi_ssh_server component exposed a root-shell path through a hardcoded JWT secret. Automated exploitation established the component identically across a multi-site server fleet; this record does not represent a bespoke attacker implant.",
+      resolution:
+        "Synthetic resolution: stopped and disabled fastapi_ssh_server, killed its process, removed the service unit and application script, reloaded systemd, installed the vendor-fixed CyberPanel release, rotated privileged credentials, and completed a clean persistence and login-history review.",
+      outcome:
+        "Synthetic outcome: the vulnerable listener remained absent, no persistence artifacts were found after the containment review, privileged access was restored through rotated credentials, and all hosted sites passed malware and availability validation.",
+      status: "resolved",
+      openedAt: "2026-06-21T09:30:00Z",
+      resolvedAt: "2026-06-21T17:15:00Z",
+      evidence: addIntegrity({
+        schemaVersion: 1,
+        seedSet,
+        seedKey: "synthetic-cyberpanel-fastapi-jwt-containment-2026-06",
+        provenance: {
+          kind: "synthetic_sibling",
+          synthetic: true,
+          derivedFrom: "anonymized Server 2 containment pattern",
+        },
+        summary:
+          "Synthetic fully resolved companion incident based on an anonymized CyberPanel containment pattern: a shipped fastapi_ssh_server component with a hardcoded JWT secret created a root-shell exposure. The record includes synthetic patching, credential rotation, deep-forensics, and website validation outcomes that must not be projected onto the original server transcript.",
+        symptoms: [
+          "All sites on the host displayed signs of compromise and a privileged administrator could not authenticate.",
+          "A long-running fastapi_ssh_server systemd service was listening as root on the CyberPanel management port.",
+        ],
+        diagnostics: [
+          "Service and process inspection identified CyberPanel's shipped fastapi_ssh_server component rather than a custom service name.",
+          "Component source review confirmed the hardcoded JWT-secret root-shell exposure associated with vulnerable CyberPanel releases.",
+          "Fleet comparison found the same component pattern on more than one server, consistent with automated mass exploitation.",
+          "Synthetic post-containment review found no immutable-file, shell-history, login-history, authentication-log, or reverse-shell persistence indicators.",
+        ],
+        resolutionActions: [
+          "Stopped and disabled fastapi_ssh_server.",
+          "Killed the running process, removed its systemd unit and application script, and reloaded systemd.",
+          "Installed the synthetic vendor-fixed CyberPanel release and rotated privileged credentials.",
+          "Completed synthetic persistence, login-history, and website-malware validation before closing the incident.",
+        ],
+        outcomeVerification: [
+          "ps aux and systemd both confirmed fastapi_ssh_server remained absent after remediation.",
+          "Synthetic deep-forensics and website validation completed without further compromise indicators.",
+          "Synthetic privileged access recovery succeeded after credential rotation.",
+        ],
+        doNotInfer: [
+          "This is a synthetic fully resolved sibling, not evidence that the original server's deep-forensics, patching, website cleanup, or account recovery completed.",
+          "Do not apply its clean persistence outcome to a server with a separate defunct.service or gsocket implant without independent verification.",
+          "Do not assume all CyberPanel installations, regions, hosts, or releases share this outcome.",
+        ],
+      }),
+    },
+  },
+  {
+    server: {
       id: "10000000-0000-4000-8000-000000000003",
       hostname: "campaigns.blueharbor.example",
       panel: "CyberPanel",
@@ -710,7 +789,7 @@ try {
     counts.seedCount !== seedRecords.length ||
     counts.embeddedCount !== seedRecords.length ||
     counts.realCount !== 2 ||
-    counts.syntheticCount !== seedRecords.length - 1
+    counts.syntheticCount !== seedRecords.length - 2
   ) {
     throw new Error(`Stored seed verification failed: ${JSON.stringify(counts)}`);
   }
