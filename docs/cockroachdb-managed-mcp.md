@@ -50,7 +50,7 @@ the application boundary does not expose.
 With strict MCP mode deployed:
 
 ```powershell
-Invoke-RestMethod "https://evidenceops.0tt.uk/api/infra/context?incidentId=40000000-0000-4000-8000-000000000005"
+Invoke-RestMethod "https://evidenceops.example/api/infra/context?incidentId=40000000-0000-4000-8000-000000000006"
 ```
 
 The returned context must contain:
@@ -68,7 +68,7 @@ command and adds its result to the one immutable evidence bundle as
 `EVD-CLUSTER-HEALTH`:
 
 ```bash
-ccloud cluster info recallops-agentic-memory --quiet --output json
+ccloud cluster info your-cockroach-cluster --quiet --output json
 ```
 
 Set `CCLOUD_CLUSTER_NAME` to the cluster name and, when needed, use

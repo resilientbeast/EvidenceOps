@@ -63,7 +63,7 @@ try {
   const catalogById = new Map(catalog.rows.map((row) => [row.id, row]));
   const matches = resolvedCandidates.map((candidate) => ({ ...catalogById.get(candidate.id), ...candidate }));
   if (matches[0]?.id !== "40000000-0000-4000-8000-000000000001") {
-    throw new Error(`Expected the Riddimstream memory first; received ${matches[0]?.id ?? "no result"}.`);
+    throw new Error(`Expected the anonymized messaging memory first; received ${matches[0]?.id ?? "no result"}.`);
   }
 
   const plan = await pool.query(`EXPLAIN ${vectorQuery}`, [active.rows[0].embedding]);

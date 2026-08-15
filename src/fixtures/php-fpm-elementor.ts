@@ -1,6 +1,6 @@
 import type { Incident } from "@/src/domain/incident";
 
-export const lineaPhpFpmFixture: Incident = {
+export const phpFpmElementorFixture: Incident = {
   id: "40000000-0000-4000-8000-000000000006",
   mode: "fixture",
   memoryMode: "fixture",
@@ -11,7 +11,7 @@ export const lineaPhpFpmFixture: Incident = {
   assertionName: "php_fpm_pm_max_children",
   sourceAssetUrn: "cockroachdb:service:30000000-0000-4000-8000-000000000006",
   estimatedExposure: "Single-site visitor latency and PHP-FPM exhaustion",
-  owner: "Linea Research",
+  owner: "Anonymized client",
   policy: "Single-site · operator-reviewed remediation",
   consumers: 1,
   evidence: [
@@ -29,7 +29,7 @@ export const lineaPhpFpmFixture: Incident = {
       sourceSystem: "cockroachdb",
       sourceRef: "service:30000000-0000-4000-8000-000000000006",
       observedAt: "2026-08-01T10:19:00+01:00",
-      summary: "The affected service was the WordPress PHP 8.3-FPM frontend for linea-research.co.uk on a Plesk Obsidian server.",
+      summary: "The affected service was the WordPress PHP 8.3-FPM frontend for an anonymized client site on a Plesk Obsidian server.",
     },
     {
       id: "EVD-003",
@@ -43,14 +43,14 @@ export const lineaPhpFpmFixture: Incident = {
       id: "EVD-004",
       kind: "action",
       sourceSystem: "operator",
-      sourceRef: "client-confirmation:linea-remediation",
+      sourceRef: "client-confirmation:anonymized-remediation",
       observedAt: "2026-08-01T12:00:00+01:00",
       summary: "The client confirmed that removing live regeneration and debug overhead, enabling caching, and moving wp-cron stopped the recurring alerts.",
     },
   ],
   blastRadius: [
     { id: "10000000-0000-4000-8000-000000000006", type: "server", name: "Plesk Obsidian server", platform: "Ubuntu · hostname not recorded", status: "at-risk", evidenceId: "EVD-002" },
-    { id: "20000000-0000-4000-8000-000000000006", type: "site", name: "linea-research.co.uk", platform: "WordPress · public frontend", status: "delayed", evidenceId: "EVD-001" },
+    { id: "20000000-0000-4000-8000-000000000006", type: "site", name: "wordpress-client.example", platform: "WordPress · public frontend", status: "delayed", evidenceId: "EVD-001" },
     { id: "30000000-0000-4000-8000-000000000006", type: "service", name: "WordPress PHP 8.3-FPM frontend", platform: "php-fpm · pool exhausted", status: "failed", evidenceId: "EVD-003" },
   ],
   hypotheses: [
@@ -115,7 +115,7 @@ export const lineaPhpFpmFixture: Incident = {
     { id: "INV-004", agent: "reviewer", label: "Hold the worker limit", finding: "Raising pm.max_children was rejected as a band-aid until the actual workload was measured after remediation.", evidenceIds: ["EVD-001", "EVD-004"], status: "challenged" },
   ],
   remediationPlan: {
-    id: "PLAN-LINEA-PHP-FPM-1",
+    id: "PLAN-PHP-FPM-ELEMENTOR-1",
     version: 1,
     objective: "Remove live Elementor regeneration from visitor requests and verify PHP-FPM pool stability.",
     riskClass: "write-low-risk",
@@ -135,5 +135,5 @@ export const lineaPhpFpmFixture: Incident = {
     { id: "EVT-003", sequence: 3, occurredAt: "11:00", label: "Caching and one-time asset regeneration plan prepared", actor: "Planner", source: "fixture" },
     { id: "EVT-004", sequence: 4, occurredAt: "12:00", label: "Client confirmed alerts stopped after remediation", actor: "Operator", source: "fixture" },
   ],
-  decision: { id: "DEC-LINEA-1", kind: "approved", actorId: "client-confirmed", planId: "PLAN-LINEA-PHP-FPM-1", planVersion: 1, idempotencyKey: "seed-linea-resolved", createdAt: "2026-08-01T12:00:00+01:00" },
+  decision: { id: "DEC-PHP-FPM-ELEMENTOR-1", kind: "approved", actorId: "client-confirmed", planId: "PLAN-PHP-FPM-ELEMENTOR-1", planVersion: 1, idempotencyKey: "seed-php-fpm-elementor-resolved", createdAt: "2026-08-01T12:00:00+01:00" },
 };

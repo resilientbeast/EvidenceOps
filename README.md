@@ -5,7 +5,7 @@ operations. It combines a CockroachDB infrastructure catalog and vector-backed
 incident memory with AWS Bedrock reasoning, then keeps any remediation behind
 an explicit human decision and audit replay.
 
-The local dashboard starts with a clearly labelled, real Linea Research
+The local dashboard starts with a clearly labelled, anonymized
 PHP-FPM/Elementor remediation record. It is a seed record, not live telemetry.
 
 ## Architecture
@@ -43,7 +43,7 @@ npm run dev
 ```
 
 The active seeded record is
-`40000000-0000-4000-8000-000000000006`: the confirmed Linea Research
+`40000000-0000-4000-8000-000000000006`: an anonymized, client-confirmed
 PHP-FPM pool-exhaustion incident caused by live Elementor regeneration.
 
 ## Verification

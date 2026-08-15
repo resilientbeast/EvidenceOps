@@ -1,6 +1,6 @@
 # EvidenceOps on Amazon Lightsail
 
-Production target: `https://evidenceops.0tt.uk` on the existing Ubuntu Lightsail
+Production target: `https://evidenceops.example` on the existing Ubuntu Lightsail
 instance in `us-east-1`, using Docker Compose behind the host's existing Nginx
 and Certbot installation.
 
@@ -56,24 +56,24 @@ Install the dedicated server block and validate the full Nginx configuration
 before reloading:
 
 ```bash
-sudo cp infra/lightsail/nginx-evidenceops.conf /etc/nginx/sites-available/evidenceops.0tt.uk
-sudo ln -s /etc/nginx/sites-available/evidenceops.0tt.uk /etc/nginx/sites-enabled/evidenceops.0tt.uk
+sudo cp infra/lightsail/nginx-evidenceops.conf /etc/nginx/sites-available/evidenceops.example
+sudo ln -s /etc/nginx/sites-available/evidenceops.example /etc/nginx/sites-enabled/evidenceops.example
 sudo nginx -t
 sudo systemctl reload nginx
 ```
 
-After the DNS `A` record for `evidenceops.0tt.uk` resolves to the instance's
+After the DNS `A` record for `evidenceops.example` resolves to the instance's
 static IPv4 address, let the existing Certbot Nginx plugin add HTTPS:
 
 ```bash
-sudo certbot --nginx -d evidenceops.0tt.uk
+sudo certbot --nginx -d evidenceops.example
 ```
 
 ## 5. Verification
 
 ```bash
 curl -fsS http://127.0.0.1:3100/api/health
-curl -fsS https://evidenceops.0tt.uk/api/health
+curl -fsS https://evidenceops.example/api/health
 docker compose -f compose.production.yml ps
 docker compose -f compose.production.yml logs --tail=100 app
 ```

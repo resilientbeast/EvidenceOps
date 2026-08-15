@@ -8,7 +8,7 @@ Bedrock for bounded read-only reasoning, and a mandatory human decision before
 any remediation outcome is recorded.
 
 The application does not connect to a third-party data catalog. Its current
-seed record is the real Linea Research WordPress PHP-FPM/Elementor incident,
+seed record is an anonymized WordPress PHP-FPM/Elementor incident,
 labelled as seeded evidence whenever CockroachDB is unavailable locally.
 
 ## Core workflow
@@ -37,7 +37,7 @@ labelled as seeded evidence whenever CockroachDB is unavailable locally.
 - With CockroachDB configured, EvidenceOps reads the active incident selected
   by `RECALLOPS_ACTIVE_INCIDENT_ID`.
 - When local development cannot reach CockroachDB, the dashboard visibly uses
-  the real, seeded Linea PHP-FPM record. It must not be presented as live
+  an anonymized PHP-FPM seed record. It must not be presented as live
   telemetry.
 - `/api/health` remains public; dashboard and incident APIs require local
   operator authentication.

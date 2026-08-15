@@ -21,7 +21,7 @@ ENV HOST=0.0.0.0 \
     NODE_ENV=production \
     PORT=3000 \
     VINEXT_TRUST_PROXY=1 \
-    VINEXT_TRUSTED_HOSTS=evidenceops.0tt.uk
+    VINEXT_TRUSTED_HOSTS=evidenceops.example
 
 WORKDIR /app
 COPY --from=production-dependencies --chown=node:node /app/node_modules ./node_modules

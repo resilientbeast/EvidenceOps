@@ -4,7 +4,7 @@ EvidenceOps has two transparent local modes:
 
 | Surface | CockroachDB available | CockroachDB unavailable locally |
 | --- | --- | --- |
-| Incident and infrastructure context | Selected live CockroachDB record | Seeded, real Linea PHP-FPM/Elementor record |
+| Incident and infrastructure context | Selected live CockroachDB record | Seeded, anonymized PHP-FPM/Elementor record |
 | Historical memory | CockroachDB vector retrieval | No fabricated historical match |
 | AI investigation | Optional Bedrock run against read-only evidence | Optional fixture-evidence run |
 
@@ -16,7 +16,7 @@ EvidenceOps has two transparent local modes:
 4. Open `http://localhost:3000/dashboard` and sign in with the local operator
    account.
 
-The seeded Linea record is an authentic, client-confirmed resolution case. It
+The seeded record is an anonymized, client-confirmed resolution case. It
 must remain labelled as seeded evidence and never be described as live site
 telemetry.
 

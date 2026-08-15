@@ -1,6 +1,6 @@
 import type { IncidentRepository, RecordDecisionInput } from "@/src/adapters/incident-repository";
 import type { Incident } from "@/src/domain/incident";
-import { lineaPhpFpmFixture } from "@/src/fixtures/linea-php-fpm";
+import { phpFpmElementorFixture } from "@/src/fixtures/php-fpm-elementor";
 import { historicalMemoryFixtures } from "@/src/fixtures/historical-memory";
 import type { HistoricalMemoryRecord } from "@/src/domain/incident";
 
@@ -9,7 +9,7 @@ function cloneIncident(incident: Incident): Incident {
 }
 
 export class FixtureIncidentRepository implements IncidentRepository {
-  private incident = cloneIncident(lineaPhpFpmFixture);
+  private incident = cloneIncident(phpFpmElementorFixture);
 
   async getById(id: string): Promise<Incident | null> {
     return this.incident.id === id ? cloneIncident(this.incident) : null;

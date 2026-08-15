@@ -49,7 +49,7 @@ test("fixture mode is explicit and never presented as a live connection", async 
   assert.match(html, /SEEDED RECORD[\s\S]*40000000-0000-4000-8000-000000000006/);
   assert.match(html, /Seeded incident record/);
   assert.match(html, /Memory fixture/);
-  assert.match(html, /Seeded evidence · Linea Research/);
+  assert.match(html, /Seeded evidence · anonymized client/);
   assert.doesNotMatch(html, /third-party catalog/i);
   assert.doesNotMatch(html, /Memory online/);
 });

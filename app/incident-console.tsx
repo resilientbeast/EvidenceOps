@@ -95,7 +95,7 @@ export function IncidentConsole({ initialIncident }: IncidentConsoleProps) {
 
   const isFixture = incident.mode === "fixture";
   const isPersistentMemory = incident.memoryMode !== "fixture";
-  const sourceLabel = isFixture ? "Seeded evidence · Linea Research" : "CockroachDB · live";
+  const sourceLabel = isFixture ? "Seeded evidence · anonymized client" : "CockroachDB · live";
   const decision = incident.decision?.kind;
 
   async function runAiInvestigation() {

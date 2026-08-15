@@ -55,14 +55,14 @@ const seedRecords = [
   {
     server: {
       id: "10000000-0000-4000-8000-000000000001",
-      hostname: "campaigns.riddimstream.com",
+      hostname: "campaign-service.example",
       panel: "Plesk",
       region: "UK",
     },
     site: {
       id: "20000000-0000-4000-8000-000000000001",
-      domain: "campaigns.riddimstream.com",
-      owner: "Riddimstream",
+      domain: "campaign-service.example",
+      owner: "Anonymized messaging client",
       slaTier: null,
     },
     service: {
@@ -97,7 +97,7 @@ const seedRecords = [
       evidence: addIntegrity({
         schemaVersion: 1,
         seedSet,
-        seedKey: "real-riddimstream-mailwizz-redis-2026-07",
+        seedKey: "anonymized-mailwizz-redis-2026-07",
         provenance: {
           kind: "operator_report",
           synthetic: false,
@@ -224,8 +224,8 @@ const seedRecords = [
     },
     site: {
       id: "20000000-0000-4000-8000-000000000006",
-      domain: "linea-research.co.uk",
-      owner: "Linea Research",
+      domain: "wordpress-client.example",
+      owner: "Anonymized client",
       slaTier: "single-site",
     },
     service: {
@@ -259,7 +259,7 @@ const seedRecords = [
       evidence: addIntegrity({
         schemaVersion: 1,
         seedSet,
-        seedKey: "real-linea-research-elementor-php-fpm-2026-07",
+        seedKey: "anonymized-elementor-php-fpm-2026-07",
         provenance: {
           kind: "operator_report",
           synthetic: false,
@@ -386,14 +386,14 @@ const seedRecords = [
   {
     server: {
       id: "10000000-0000-4000-8000-000000000008",
-      hostname: "secure.naturalranks.co.uk",
+      hostname: "managed-plesk-portfolio.example",
       panel: "Plesk",
       region: "not-recorded",
     },
     site: {
       id: "20000000-0000-4000-8000-000000000008",
-      domain: "secure.naturalranks.co.uk",
-      owner: "Natural Ranks",
+      domain: "managed-plesk-portfolio.example",
+      owner: "Anonymized managed-services client",
       slaTier: "managed-wordpress-fleet",
     },
     service: {
@@ -912,7 +912,7 @@ try {
   const expectedTopMatchId = seedRecords[0].incident.id;
   if (matches.rows[0]?.id !== expectedTopMatchId) {
     throw new Error(
-      `Vector retrieval did not rank the real Riddimstream incident first. Received ${matches.rows[0]?.id ?? "no match"}.`,
+      `Vector retrieval did not rank the anonymized messaging incident first. Received ${matches.rows[0]?.id ?? "no match"}.`,
     );
   }
 

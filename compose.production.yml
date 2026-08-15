@@ -13,7 +13,7 @@ services:
       NODE_ENV: production
       PORT: 3000
       VINEXT_TRUST_PROXY: "1"
-      VINEXT_TRUSTED_HOSTS: evidenceops.0tt.uk
+      VINEXT_TRUSTED_HOSTS: evidenceops.example
     ports:
       - "127.0.0.1:3100:3000"
     restart: unless-stopped
