@@ -385,6 +385,97 @@ const seedRecords = [
   },
   {
     server: {
+      id: "10000000-0000-4000-8000-000000000008",
+      hostname: "secure.naturalranks.co.uk",
+      panel: "Plesk",
+      region: "not-recorded",
+    },
+    site: {
+      id: "20000000-0000-4000-8000-000000000008",
+      domain: "secure.naturalranks.co.uk",
+      owner: "Natural Ranks",
+      slaTier: "managed-wordpress-fleet",
+    },
+    service: {
+      id: "30000000-0000-4000-8000-000000000008",
+      kind: "wordpress-fleet",
+      name: "Managed WordPress vulnerability response",
+      status: "patched_and_verified",
+      metadata: {
+        panel: "Plesk",
+        totalClientDomainAccounts: 72,
+        detailedReviewDispositions: 64,
+        patchedSites: 19,
+        alreadyPatchedSites: 24,
+        legacyOutOfRangeSites: 13,
+        noSiteOrWordpressDomains: 8,
+      },
+    },
+    incident: {
+      id: "40000000-0000-4000-8000-000000000008",
+      severity: "SEV-2",
+      title: "WP2Shell WordPress core RCE mitigated across a managed Plesk portfolio",
+      rootCause:
+        "The WP2Shell WordPress core remote-code-execution disclosure (CVE-2026-60137/CVE-2026-63030) affected sites running vulnerable WordPress release branches. The server-wide response was a preventative vulnerability mitigation; no confirmed exploitation of a customer site is recorded.",
+      resolution:
+        "Manually updated 19 affected sites through Plesk WP Toolkit and WP-CLI/SSH to the highest patched release available for their branch (7.0.2, 6.9.5, or 6.8.6). Confirmed 24 sites were already patched, classified 13 legacy WordPress 4.x-6.2 sites as outside the affected range and queued them for rebuild, and confirmed 8 domains carried no live website or WordPress instance.",
+      outcome:
+        "Client-facing PDF remediation report and summary email were delivered. The known WP2Shell exposure was fully resolved across the assessed portfolio; the remaining legacy rebuild backlog and EOL PHP estate are tracked as separate lifecycle risks, not an open WP2Shell exposure.",
+      status: "resolved",
+      openedAt: null,
+      resolvedAt: null,
+      evidence: addIntegrity({
+        schemaVersion: 1,
+        seedSet,
+        seedKey: "real-natural-ranks-wp2shell-portfolio-mitigation-2026-07",
+        provenance: {
+          kind: "operator_report",
+          synthetic: false,
+        },
+        summary:
+          "A Plesk-hosted managed WordPress portfolio was assessed after the July 17, 2026 WP2Shell core-RCE disclosure. Nineteen sites required manual core patching, 24 were already patched, 13 legacy sites were confirmed outside the affected range and put on a rebuild track, and eight domains were confirmed to have no live site or WordPress instance. The vulnerable exposure was closed without a confirmed exploitation finding.",
+        timeContext: {
+          triggerDate: "2026-07-17",
+          trigger: "WP2Shell disclosure",
+          openedAt: "not-recorded",
+          resolvedAt: "not-recorded",
+          precision: "disclosure_date_with_unrecorded_response_timestamps",
+        },
+        symptoms: [
+          "Critical WordPress core RCE exposure required a server-wide assessment of the managed portfolio.",
+          "No confirmed exploitation, website compromise, or service outage was reported in this remediation record.",
+        ],
+        diagnostics: [
+          "Nineteen sites required manual core updates to 7.0.2, 6.9.5, or 6.8.6 according to their supported branch.",
+          "Twenty-four sites were already on patched releases.",
+          "Thirteen WordPress 4.x-6.2 legacy sites predated the affected range and were classified for rebuild rather than patching.",
+          "Eight domains were confirmed to carry no live website or WordPress instance.",
+        ],
+        resolutionActions: [
+          "Applied manual core updates through Plesk WP Toolkit and WP-CLI/SSH to every assessed vulnerable site.",
+          "Produced a client-facing PDF remediation report and summary email.",
+          "Recorded the legacy-site rebuild backlog and EOL PHP exposure as follow-up lifecycle work.",
+        ],
+        outcomeVerification: [
+          "All 19 identified vulnerable sites were updated to an available patched release for their branch.",
+          "Twenty-four assessed sites were independently confirmed already patched.",
+          "The known WP2Shell exposure was declared fully resolved after the review and remediation pass.",
+        ],
+        relatedRisks: [
+          "47 of 72 Plesk client domain accounts were reported to use EOL, unpatched PHP versions; this was documented separately and was not the WP2Shell root cause.",
+          "Thirteen legacy WordPress sites remain rebuild candidates even though they were outside the WP2Shell affected range.",
+        ],
+        doNotInfer: [
+          "Do not claim confirmed exploitation of WP2Shell; this was a preventative remediation incident.",
+          "Do not treat EOL PHP exposure or the legacy rebuild backlog as unresolved WP2Shell vulnerability exposure.",
+          "Do not invent exact incident start or resolution timestamps.",
+          "The source reports 72 total Plesk client domain accounts and 64 detailed review dispositions; the mapping of the remaining account scope was not recorded in this incident evidence.",
+        ],
+      }),
+    },
+  },
+  {
+    server: {
       id: "10000000-0000-4000-8000-000000000003",
       hostname: "campaigns.blueharbor.example",
       panel: "CyberPanel",
@@ -788,8 +879,8 @@ try {
   if (
     counts.seedCount !== seedRecords.length ||
     counts.embeddedCount !== seedRecords.length ||
-    counts.realCount !== 2 ||
-    counts.syntheticCount !== seedRecords.length - 2
+    counts.realCount !== 3 ||
+    counts.syntheticCount !== seedRecords.length - 3
   ) {
     throw new Error(`Stored seed verification failed: ${JSON.stringify(counts)}`);
   }
