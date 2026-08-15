@@ -43,3 +43,7 @@ yarn-error.log*
 /outputs/
 /output/
 /work/
+
+# Personal working drafts; not part of the application deliverable.
+/STRETCH_GOALS_SPEC.md
+/docs/demo-narration.md
