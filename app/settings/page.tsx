@@ -30,7 +30,7 @@ export default async function SettingsPage() {
       <section className="settings-content" aria-labelledby="settings-title">
         <p className="settings-eyebrow">Organization settings</p>
         <h1 id="settings-title">Slack ingestion</h1>
-        <p className="settings-intro">Configure the credentials and allowed channels used by the future Slack ingestion service. Tokens are encrypted before they are saved and are never shown again.</p>
+        <p className="settings-intro">Configure the encrypted credentials and channel allowlist for Slack Events API ingestion. The signing secret verifies each inbound request; stored secrets are never shown again.</p>
         <SlackSettingsForm initialSettings={initialSettings} initialError={initialError} />
       </section>
     </main>

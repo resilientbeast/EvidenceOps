@@ -42,7 +42,7 @@ async function parseUpdate(request: Request) {
     return Response.json({ error: "Expected a JSON settings payload." }, { status: 400 });
   }
   const record = body as Record<string, unknown>;
-  const update: { botToken?: string; appToken?: string; allowedChannelIds?: string[] } = {};
+  const update: { botToken?: string; appToken?: string; signingSecret?: string; botUserId?: string; allowedChannelIds?: string[] } = {};
   if ("botToken" in record) {
     if (typeof record.botToken !== "string" || record.botToken.length > 512) {
       return Response.json({ error: "The Slack bot token is invalid." }, { status: 400 });
@@ -54,6 +54,18 @@ async function parseUpdate(request: Request) {
       return Response.json({ error: "The Slack app token is invalid." }, { status: 400 });
     }
     update.appToken = record.appToken.trim();
+  }
+  if ("signingSecret" in record) {
+    if (typeof record.signingSecret !== "string" || record.signingSecret.length > 512) {
+      return Response.json({ error: "The Slack signing secret is invalid." }, { status: 400 });
+    }
+    update.signingSecret = record.signingSecret.trim();
+  }
+  if ("botUserId" in record) {
+    if (typeof record.botUserId !== "string" || !/^(?:U|W)[A-Z0-9]{8,}$/.test(record.botUserId.trim())) {
+      return Response.json({ error: "The Slack bot user ID is invalid." }, { status: 400 });
+    }
+    update.botUserId = record.botUserId.trim();
   }
   if ("allowedChannelIds" in record) {
     if (!Array.isArray(record.allowedChannelIds) || record.allowedChannelIds.length > 50) {

@@ -7,6 +7,8 @@ const DEFAULT_ORGANIZATION_ID = "org-local-default";
 export type SlackSettings = {
   botTokenConfigured: boolean;
   appTokenConfigured: boolean;
+  signingSecretConfigured: boolean;
+  botUserId: string | null;
   allowedChannelIds: string[];
   updatedAt: string | null;
   updatedBy: string | null;
@@ -15,13 +17,31 @@ export type SlackSettings = {
 export type SlackSettingsUpdate = {
   botToken?: string;
   appToken?: string;
+  signingSecret?: string;
+  botUserId?: string;
   allowedChannelIds?: string[];
 };
 
 type StoredSlackSettings = {
   botToken: string | null;
   appToken: string | null;
+  signingSecret: string | null;
+  botUserId: string | null;
   allowedChannelIds: string[];
+};
+
+export type SlackInboundConfiguration = {
+  organizationId: string;
+  signingSecret: string;
+  botUserId: string | null;
+  allowedChannelIds: string[];
+};
+
+export type SlackInboundEventClaim = {
+  eventId: string;
+  eventType: string;
+  channelId: string;
+  senderId: string | null;
 };
 
 type SettingsRow = {
@@ -32,14 +52,24 @@ type SettingsRow = {
   updated_by: string;
 };
 
+type ClaimedInboundEventRow = {
+  event_id: string;
+};
+
 export class SettingsConfigurationError extends Error {}
 export class SettingsPersistenceError extends Error {}
 
 export class CockroachOrganizationSlackSettingsStore {
+  private readonly pool: Pick<Pool, "query">;
+  private readonly encryptionKey: Buffer;
+
   constructor(
-    private readonly pool: Pick<Pool, "query">,
-    private readonly encryptionKey: Buffer,
-  ) {}
+    pool: Pick<Pool, "query">,
+    encryptionKey: Buffer,
+  ) {
+    this.pool = pool;
+    this.encryptionKey = encryptionKey;
+  }
 
   static fromEnvironment(
     pool: Pick<Pool, "query">,
@@ -69,7 +99,15 @@ export class CockroachOrganizationSlackSettingsStore {
     );
 
     if (result.rowCount !== 1) {
-      return { botTokenConfigured: false, appTokenConfigured: false, allowedChannelIds: [], updatedAt: null, updatedBy: null };
+      return {
+        botTokenConfigured: false,
+        appTokenConfigured: false,
+        signingSecretConfigured: false,
+        botUserId: null,
+        allowedChannelIds: [],
+        updatedAt: null,
+        updatedBy: null,
+      };
     }
 
     const row = result.rows[0];
@@ -84,6 +122,8 @@ export class CockroachOrganizationSlackSettingsStore {
     const next: StoredSlackSettings = {
       botToken: update.botToken === undefined ? existing.botToken : update.botToken || null,
       appToken: update.appToken === undefined ? existing.appToken : update.appToken || null,
+      signingSecret: update.signingSecret === undefined ? existing.signingSecret : update.signingSecret || null,
+      botUserId: update.botUserId === undefined ? existing.botUserId : update.botUserId || null,
       allowedChannelIds: update.allowedChannelIds === undefined ? existing.allowedChannelIds : update.allowedChannelIds,
     };
     const encrypted = this.encrypt(next, organizationId);
@@ -97,6 +137,34 @@ export class CockroachOrganizationSlackSettingsStore {
     );
 
     return toPublicSettings(next, result.rows[0]);
+  }
+
+  async inboundConfiguration(): Promise<SlackInboundConfiguration> {
+    const organizationId = DEFAULT_ORGANIZATION_ID;
+    await this.ensureTable();
+    const settings = await this.readStored(organizationId);
+    if (!settings.signingSecret) {
+      throw new SettingsConfigurationError("A Slack signing secret is required for inbound event verification.");
+    }
+    return {
+      organizationId,
+      signingSecret: settings.signingSecret,
+      botUserId: settings.botUserId,
+      allowedChannelIds: settings.allowedChannelIds,
+    };
+  }
+
+  async claimInboundEvent(claim: SlackInboundEventClaim): Promise<boolean> {
+    await this.ensureInboundEventTable();
+    const result = await this.pool.query<ClaimedInboundEventRow>(
+      `INSERT INTO slack_ingestion_events
+        (organization_id, event_id, event_type, channel_id, sender_id, received_at)
+       VALUES ($1, $2, $3, $4, $5, now())
+       ON CONFLICT (organization_id, event_id) DO NOTHING
+       RETURNING event_id`,
+      [DEFAULT_ORGANIZATION_ID, claim.eventId, claim.eventType, claim.channelId, claim.senderId],
+    );
+    return result.rowCount === 1;
   }
 
   private async ensureTable(): Promise<void> {
@@ -118,6 +186,24 @@ export class CockroachOrganizationSlackSettingsStore {
     }
   }
 
+  private async ensureInboundEventTable(): Promise<void> {
+    try {
+      await this.pool.query(`
+        CREATE TABLE IF NOT EXISTS slack_ingestion_events (
+          organization_id STRING NOT NULL,
+          event_id STRING NOT NULL,
+          event_type STRING NOT NULL,
+          channel_id STRING NOT NULL,
+          sender_id STRING NULL,
+          received_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+          PRIMARY KEY (organization_id, event_id)
+        )
+      `);
+    } catch {
+      throw new SettingsPersistenceError("Unable to initialize Slack event deduplication.");
+    }
+  }
+
   private async readStored(organizationId: string): Promise<StoredSlackSettings> {
     const result = await this.pool.query<SettingsRow>(
       `SELECT ciphertext, nonce, auth_tag, updated_at, updated_by
@@ -127,7 +213,7 @@ export class CockroachOrganizationSlackSettingsStore {
     );
     return result.rowCount === 1
       ? this.decrypt(result.rows[0], organizationId)
-      : { botToken: null, appToken: null, allowedChannelIds: [] };
+      : { botToken: null, appToken: null, signingSecret: null, botUserId: null, allowedChannelIds: [] };
   }
 
   private encrypt(value: StoredSlackSettings, organizationId: string) {
@@ -150,6 +236,8 @@ export class CockroachOrganizationSlackSettingsStore {
       return {
         botToken: typeof record.botToken === "string" ? record.botToken : null,
         appToken: typeof record.appToken === "string" ? record.appToken : null,
+        signingSecret: typeof record.signingSecret === "string" ? record.signingSecret : null,
+        botUserId: typeof record.botUserId === "string" ? record.botUserId : null,
         allowedChannelIds: Array.isArray(record.allowedChannelIds)
           ? record.allowedChannelIds.filter((item): item is string => typeof item === "string")
           : [],
@@ -175,6 +263,8 @@ function toPublicSettings(settings: StoredSlackSettings, row: Pick<SettingsRow, 
   return {
     botTokenConfigured: Boolean(settings.botToken),
     appTokenConfigured: Boolean(settings.appToken),
+    signingSecretConfigured: Boolean(settings.signingSecret),
+    botUserId: settings.botUserId,
     allowedChannelIds: settings.allowedChannelIds,
     updatedAt: row.updated_at instanceof Date ? row.updated_at.toISOString() : new Date(row.updated_at).toISOString(),
     updatedBy: row.updated_by,
