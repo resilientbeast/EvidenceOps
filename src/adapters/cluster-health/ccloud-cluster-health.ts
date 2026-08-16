@@ -1,4 +1,5 @@
 import { execFile as executeFile } from "node:child_process";
+import { readFile, stat } from "node:fs/promises";
 import { promisify } from "node:util";
 import type { Evidence } from "@/src/domain/incident";
 
@@ -6,8 +7,10 @@ const execFile = promisify(executeFile);
 const evidenceId = "EVD-CLUSTER-HEALTH";
 const defaultTimeoutMs = 5_000;
 const defaultCacheMs = 30_000;
+const defaultSnapshotMaxAgeMs = 120_000;
 const maxTimeoutMs = 15_000;
 const maxCacheMs = 300_000;
+const maxSnapshotMaxAgeMs = 300_000;
 
 interface CcloudClusterInfo {
   id?: unknown;
@@ -34,6 +37,8 @@ export interface CcloudClusterHealthConfig {
   clusterId: string | undefined;
   timeoutMs: number;
   cacheMs: number;
+  snapshotFile: string | undefined;
+  snapshotMaxAgeMs: number;
 }
 
 function boundedInteger(value: string | undefined, fallback: number, maximum: number): number {
@@ -73,8 +78,12 @@ function wasKilledProcess(error: unknown): boolean {
   );
 }
 
-function availableEvidence(clusterName: string, clusterId: string | undefined, result: CcloudClusterInfo): Evidence {
-  const observedAt = new Date().toISOString();
+function availableEvidence(
+  clusterName: string,
+  clusterId: string | undefined,
+  result: CcloudClusterInfo,
+  observedAt = new Date().toISOString(),
+): Evidence {
   const name = stringField(result.name) ?? clusterName;
   const id = stringField(result.id) ?? clusterId;
   const state = stringField(result.state) ?? "UNKNOWN";
@@ -103,7 +112,21 @@ export function getCcloudClusterHealthConfig(
     clusterId: environment.COCKROACHDB_MCP_CLUSTER_ID,
     timeoutMs: boundedInteger(environment.CCLOUD_HEALTH_TIMEOUT_MS, defaultTimeoutMs, maxTimeoutMs),
     cacheMs: boundedInteger(environment.CCLOUD_HEALTH_CACHE_MS, defaultCacheMs, maxCacheMs),
+    snapshotFile: environment.CCLOUD_HEALTH_FILE,
+    snapshotMaxAgeMs: boundedInteger(environment.CCLOUD_HEALTH_MAX_AGE_MS, defaultSnapshotMaxAgeMs, maxSnapshotMaxAgeMs),
   };
+}
+
+async function readCurrentSnapshot(path: string, maxAgeMs: number): Promise<{ result: CcloudClusterInfo; observedAt: string }> {
+  const [raw, details] = await Promise.all([readFile(path, "utf8"), stat(path)]);
+  if (Date.now() - details.mtimeMs > maxAgeMs) {
+    throw new Error("ccloud health snapshot is stale");
+  }
+  const result: unknown = JSON.parse(raw);
+  if (!result || typeof result !== "object" || Array.isArray(result)) {
+    throw new Error("ccloud health snapshot is invalid");
+  }
+  return { result: result as CcloudClusterInfo, observedAt: details.mtime.toISOString() };
 }
 
 export class CcloudClusterHealthEvidenceProvider implements ClusterHealthEvidenceProvider {
@@ -123,16 +146,21 @@ export class CcloudClusterHealthEvidenceProvider implements ClusterHealthEvidenc
 
     let evidence: Evidence;
     try {
-      const { stdout } = await execFile(
-        this.config.command,
-        ["cluster", "info", this.config.clusterName, "--quiet", "--output", "json"],
-        { timeout: this.config.timeoutMs, windowsHide: true, maxBuffer: 64 * 1024 },
-      );
-      const result: unknown = JSON.parse(stdout);
-      if (!result || typeof result !== "object" || Array.isArray(result)) {
-        throw new Error("ccloud returned an invalid cluster-info payload");
+      if (this.config.snapshotFile) {
+        const snapshot = await readCurrentSnapshot(this.config.snapshotFile, this.config.snapshotMaxAgeMs);
+        evidence = availableEvidence(this.config.clusterName, this.config.clusterId, snapshot.result, snapshot.observedAt);
+      } else {
+        const { stdout } = await execFile(
+          this.config.command,
+          ["cluster", "info", this.config.clusterName, "--quiet", "--output", "json"],
+          { timeout: this.config.timeoutMs, windowsHide: true, maxBuffer: 64 * 1024 },
+        );
+        const result: unknown = JSON.parse(stdout);
+        if (!result || typeof result !== "object" || Array.isArray(result)) {
+          throw new Error("ccloud returned an invalid cluster-info payload");
+        }
+        evidence = availableEvidence(this.config.clusterName, this.config.clusterId, result as CcloudClusterInfo);
       }
-      evidence = availableEvidence(this.config.clusterName, this.config.clusterId, result as CcloudClusterInfo);
     } catch (error) {
       const detail = wasKilledProcess(error)
         ? `the ccloud check exceeded ${this.config.timeoutMs}ms`

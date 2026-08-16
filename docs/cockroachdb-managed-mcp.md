@@ -81,14 +81,23 @@ it never prevents the incident investigation from continuing.
 MCP API key or any browser/session credential into application environment
 files.
 
-In the Lightsail Docker deployment, the CLI is installed in the application
-image and the host's `~/.config/cockroachdb` directory is mounted read-only at
-`/run/ccloud-auth`. The entrypoint copies it to the container's ephemeral home,
-because `ccloud` updates session metadata even for reads; that copy disappears
-when the container is replaced. The compose file accepts an optional
-`CCLOUD_AUTH_DIR` host-path override for a dedicated CLI account. Keep that
-directory out of Git and use a CockroachDB Cloud identity limited to the target
-cluster. The application can only invoke its fixed `cluster info` command.
+In the Lightsail Docker deployment, `ccloud` remains host-owned because its
+human authentication session is not portable into a long-lived application
+container. A host job invokes only the fixed, read-only `cluster info` command
+and atomically writes its JSON result to `/opt/evidenceops/.runtime/`
+`ccloud-cluster-health.json`. Compose mounts that directory read-only at
+`/run/evidenceops`; the application accepts a snapshot only while it is fresh
+(two minutes by default). No CockroachDB Cloud session credential enters the
+container, image, application environment, or Git.
+
+Refresh the snapshot using the included host-side helper (and schedule the same
+command at least once per minute in the host's approved scheduler):
+
+```bash
+bash infra/lightsail/refresh-ccloud-health.sh \
+  "$CCLOUD_CLUSTER_NAME" \
+  /opt/evidenceops/.runtime/ccloud-cluster-health.json
+```
 
 ## Pinned Agent Skills diagnostic
 

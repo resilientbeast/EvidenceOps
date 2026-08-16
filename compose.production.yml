@@ -10,17 +10,17 @@ services:
       - .env
     environment:
       HOST: 0.0.0.0
-      HOME: /home/node
       NODE_ENV: production
       PORT: 3000
+      CCLOUD_HEALTH_FILE: /run/evidenceops/ccloud-cluster-health.json
       VINEXT_TRUST_PROXY: "1"
       VINEXT_TRUSTED_HOSTS: evidenceops.example
     ports:
       - "127.0.0.1:3100:3000"
     volumes:
-      # ccloud updates session metadata while reading. The host session stays
-      # read-only; the entrypoint copies it into the container's ephemeral home.
-      - ${CCLOUD_AUTH_DIR:-/home/ubuntu/.config/cockroachdb}:/run/ccloud-auth:ro
+      # The host-owned ccloud command writes only a short-lived, non-secret
+      # health snapshot. The application receives that result read-only.
+      - ${CCLOUD_HEALTH_DIR:-/opt/evidenceops/.runtime}:/run/evidenceops:ro
     restart: unless-stopped
     init: true
     mem_limit: 1g
