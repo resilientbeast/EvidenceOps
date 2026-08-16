@@ -3,6 +3,7 @@ import { createHmac } from "node:crypto";
 import test from "node:test";
 import {
   decideSlackInboundEvent,
+  redactSlackMessage,
   redactedSlackInboundLog,
   verifySlackRequest,
 } from "../src/adapters/slack/slack-event-guard.ts";
@@ -65,6 +66,14 @@ test("inbound logs contain no message text or full identifiers", () => {
   assert.match(serialized, /accepted/);
 });
 
+test("intake summaries redact URLs, domains, email, IPs, and obvious secrets", () => {
+  const summary = redactSlackMessage("Investigate https://portal.example.com from 203.0.113.7; email ops@example.com; api_key=abc123");
+  assert.doesNotMatch(summary, /portal\.example\.com|203\.0\.113\.7|ops@example\.com|abc123/);
+  assert.match(summary, /\[url\]|\[domain\]/);
+  assert.match(summary, /\[ip-address\]/);
+  assert.match(summary, /api_key=\[redacted\]/i);
+});
+
 test("the durable delivery ledger only claims an event once", async () => {
   let deliveries = 0;
   const pool = {
@@ -80,4 +89,23 @@ test("the durable delivery ledger only claims an event once", async () => {
   const claim = { eventId: "Ev0123456789", eventType: "message", channelId: "C0123456789", senderId: "U0123456789" };
   assert.equal(await store.claimInboundEvent(claim), true);
   assert.equal(await store.claimInboundEvent(claim), false);
+});
+
+test("an accepted delivery creates one pending review intake", async () => {
+  let insertions = 0;
+  const pool = {
+    async query(sql: string) {
+      if (sql.includes("CREATE TABLE")) return { rowCount: null, rows: [] };
+      insertions += 1;
+      return insertions === 1
+        ? { rowCount: 1, rows: [{ id: "00000000-0000-4000-8000-000000000001" }] }
+        : { rowCount: 0, rows: [] };
+    },
+  };
+  const store = new CockroachOrganizationSlackSettingsStore(pool as never, Buffer.alloc(32, 7));
+  const accepted = {
+    eventId: "Ev0123456789", eventType: "message", channelId: "C0123456789", senderId: "U0123456789", redactedSummary: "Alert from [domain]",
+  };
+  assert.equal(await store.recordAcceptedInboundEvent(accepted), "00000000-0000-4000-8000-000000000001");
+  assert.equal(await store.recordAcceptedInboundEvent(accepted), null);
 });

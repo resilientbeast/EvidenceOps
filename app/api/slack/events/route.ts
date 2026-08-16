@@ -33,10 +33,11 @@ export async function POST(request: Request): Promise<Response> {
       return Response.json({ ok: true });
     }
 
-    // The single insert is the durable deduplication gate. Acknowledgement does
-    // not wait for AI work, Slack Web API calls, or any unbounded processing.
-    const firstDelivery = await store.claimInboundEvent(decision);
-    logRedacted({ ...redactedSlackInboundLog(decision), outcome: firstDelivery ? "accepted" : "duplicate" });
+    // The single statement is both the durable deduplication gate and the
+    // review-queue intake write. Acknowledgement never waits for AI work,
+    // Slack Web API calls, or any unbounded processing.
+    const intakeId = await store.recordAcceptedInboundEvent(decision);
+    logRedacted({ ...redactedSlackInboundLog(decision), outcome: intakeId ? "accepted" : "duplicate" });
     return Response.json({ ok: true });
   } catch (error) {
     if (error instanceof SettingsConfigurationError || error instanceof SettingsPersistenceError) {

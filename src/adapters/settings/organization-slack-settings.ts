@@ -44,6 +44,22 @@ export type SlackInboundEventClaim = {
   senderId: string | null;
 };
 
+export type SlackIncidentIntake = {
+  id: string;
+  status: "pending_review" | "reviewed" | "dismissed";
+  summary: string;
+  eventType: string;
+  receivedAt: string;
+  reviewedAt: string | null;
+  reviewedBy: string | null;
+  reviewNote: string | null;
+};
+
+export type SlackIncidentIntakeReview = {
+  status: "reviewed" | "dismissed";
+  reviewNote: string | null;
+};
+
 type SettingsRow = {
   ciphertext: Buffer;
   nonce: Buffer;
@@ -54,6 +70,17 @@ type SettingsRow = {
 
 type ClaimedInboundEventRow = {
   event_id: string;
+};
+
+type SlackIncidentIntakeRow = {
+  id: string;
+  status: "pending_review" | "reviewed" | "dismissed";
+  redacted_summary: string;
+  event_type: string;
+  received_at: Date | string;
+  reviewed_at: Date | string | null;
+  reviewed_by: string | null;
+  review_note: string | null;
 };
 
 export class SettingsConfigurationError extends Error {}
@@ -167,6 +194,52 @@ export class CockroachOrganizationSlackSettingsStore {
     return result.rowCount === 1;
   }
 
+  async recordAcceptedInboundEvent(claim: SlackInboundEventClaim & { redactedSummary: string }): Promise<string | null> {
+    await this.ensureInboundIntakeTable();
+    const result = await this.pool.query<{ id: string }>(
+      `WITH claimed AS (
+         INSERT INTO slack_ingestion_events
+           (organization_id, event_id, event_type, channel_id, sender_id, received_at)
+         VALUES ($1, $2, $3, $4, $5, now())
+         ON CONFLICT (organization_id, event_id) DO NOTHING
+         RETURNING organization_id, event_id, event_type
+       )
+       INSERT INTO slack_incident_intakes
+         (organization_id, event_id, event_type, redacted_summary, status, received_at)
+       SELECT organization_id, event_id, event_type, $6, 'pending_review', now()
+         FROM claimed
+       RETURNING id::STRING AS id`,
+      [DEFAULT_ORGANIZATION_ID, claim.eventId, claim.eventType, claim.channelId, claim.senderId, claim.redactedSummary],
+    );
+    return result.rowCount === 1 ? result.rows[0].id : null;
+  }
+
+  async listIncidentIntakes(userId: string): Promise<SlackIncidentIntake[]> {
+    const organizationId = organizationIdFor(userId);
+    await this.ensureInboundIntakeTable();
+    const result = await this.pool.query<SlackIncidentIntakeRow>(
+      `SELECT id::STRING AS id, status, redacted_summary, event_type, received_at, reviewed_at, reviewed_by, review_note
+         FROM slack_incident_intakes
+        WHERE organization_id = $1
+        ORDER BY received_at DESC`,
+      [organizationId],
+    );
+    return result.rows.map(toIncidentIntake);
+  }
+
+  async reviewIncidentIntake(userId: string, intakeId: string, review: SlackIncidentIntakeReview): Promise<SlackIncidentIntake | null> {
+    const organizationId = organizationIdFor(userId);
+    await this.ensureInboundIntakeTable();
+    const result = await this.pool.query<SlackIncidentIntakeRow>(
+      `UPDATE slack_incident_intakes
+          SET status = $3, reviewed_at = now(), reviewed_by = $4, review_note = $5
+        WHERE organization_id = $1 AND id = $2::UUID AND status = 'pending_review'
+       RETURNING id::STRING AS id, status, redacted_summary, event_type, received_at, reviewed_at, reviewed_by, review_note`,
+      [organizationId, intakeId, review.status, userId, review.reviewNote],
+    );
+    return result.rowCount === 1 ? toIncidentIntake(result.rows[0]) : null;
+  }
+
   private async ensureTable(): Promise<void> {
     try {
       await this.pool.query(`
@@ -201,6 +274,30 @@ export class CockroachOrganizationSlackSettingsStore {
       `);
     } catch {
       throw new SettingsPersistenceError("Unable to initialize Slack event deduplication.");
+    }
+  }
+
+  private async ensureInboundIntakeTable(): Promise<void> {
+    await this.ensureInboundEventTable();
+    try {
+      await this.pool.query(`
+        CREATE TABLE IF NOT EXISTS slack_incident_intakes (
+          id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+          organization_id STRING NOT NULL,
+          event_id STRING NOT NULL,
+          event_type STRING NOT NULL,
+          redacted_summary STRING NOT NULL,
+          status STRING NOT NULL DEFAULT 'pending_review',
+          received_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+          reviewed_at TIMESTAMPTZ NULL,
+          reviewed_by STRING NULL,
+          review_note STRING NULL,
+          CONSTRAINT slack_incident_intakes_status_check CHECK (status IN ('pending_review', 'reviewed', 'dismissed')),
+          UNIQUE (organization_id, event_id)
+        )
+      `);
+    } catch {
+      throw new SettingsPersistenceError("Unable to initialize Slack incident intake.");
     }
   }
 
@@ -269,4 +366,21 @@ function toPublicSettings(settings: StoredSlackSettings, row: Pick<SettingsRow, 
     updatedAt: row.updated_at instanceof Date ? row.updated_at.toISOString() : new Date(row.updated_at).toISOString(),
     updatedBy: row.updated_by,
   };
+}
+
+function toIncidentIntake(row: SlackIncidentIntakeRow): SlackIncidentIntake {
+  return {
+    id: row.id,
+    status: row.status,
+    summary: row.redacted_summary,
+    eventType: row.event_type,
+    receivedAt: timestamp(row.received_at),
+    reviewedAt: row.reviewed_at === null ? null : timestamp(row.reviewed_at),
+    reviewedBy: row.reviewed_by,
+    reviewNote: row.review_note,
+  };
+}
+
+function timestamp(value: Date | string): string {
+  return value instanceof Date ? value.toISOString() : new Date(value).toISOString();
 }

@@ -1,7 +1,7 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { authenticateLocalRequest } from "@/src/adapters/auth/local-auth";
 
-const PUBLIC_PATHS = new Set(["/", "/api/health"]);
+const PUBLIC_PATHS = new Set(["/", "/api/health", "/api/slack/events"]);
 
 export function proxy(request: NextRequest): Response {
   const { pathname } = request.nextUrl;

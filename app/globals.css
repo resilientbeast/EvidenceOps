@@ -287,6 +287,16 @@ button:disabled { cursor: not-allowed; opacity: .58; }
 .settings-message { margin: 0; color: #28704f; font-size: 12px; }
 .settings-message.error { color: #b23e20; }
 .settings-audit { margin: 0; color: var(--muted); font-size: 10px; }
+.intake-list { display: grid; gap: 12px; }
+.intake-card { display: grid; gap: 11px; padding: 20px; border: 1px solid var(--line); border-radius: 12px; background: var(--panel); box-shadow: 0 12px 30px rgba(17,42,36,.06); }
+.intake-card-meta, .intake-actions { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; }
+.intake-card-meta span { border-radius: 999px; padding: 5px 8px; background: #e4f3e9; color: #226448; font: 700 9px var(--font-geist-mono); text-transform: uppercase; }
+.intake-card p { margin: 0; color: var(--ink); font-size: 14px; line-height: 1.55; }
+.intake-card small, .intake-empty { margin: 0; color: var(--muted); font-size: 11px; line-height: 1.5; }
+.intake-actions { margin-top: 3px; }
+.intake-actions button { border: 0; border-radius: 7px; padding: 9px 11px; background: var(--deep); color: #d7f064; cursor: pointer; font: 800 10px var(--font-geist-mono); }
+.intake-actions .intake-dismiss { background: #e8ece8; color: #475a50; }
+.intake-actions button:disabled { cursor: wait; }
 
 @media (max-width: 1050px) {
   .landing-hero { gap: 34px; }

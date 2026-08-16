@@ -13,6 +13,7 @@ type SlackMessageEvent = {
   user?: unknown;
   bot_id?: unknown;
   subtype?: unknown;
+  text?: unknown;
 };
 
 type SlackEnvelope = {
@@ -24,7 +25,7 @@ type SlackEnvelope = {
 
 export type SlackInboundDecision =
   | { kind: "url_verification"; challenge: string }
-  | { kind: "accept"; eventId: string; eventType: string; channelId: string; senderId: string | null }
+  | { kind: "accept"; eventId: string; eventType: string; channelId: string; senderId: string | null; redactedSummary: string }
   | { kind: "ignore"; reason: "unsupported_event" | "channel_not_allowed" | "self_message" | "invalid_event" };
 
 export function verifySlackRequest(
@@ -82,7 +83,20 @@ export function decideSlackInboundEvent(rawBody: string, configuration: SlackInb
     eventType: "message",
     channelId: event.channel,
     senderId: typeof event.user === "string" ? event.user : null,
+    redactedSummary: redactSlackMessage(typeof event.text === "string" ? event.text : ""),
   };
+}
+
+export function redactSlackMessage(message: string): string {
+  const compact = message.replace(/\s+/g, " ").trim();
+  if (!compact) return "No message text was provided.";
+  const redacted = compact
+    .replace(/\b(?:https?:\/\/|www\.)[^\s>]+/gi, "[url]")
+    .replace(/\b[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}\b/gi, "[email]")
+    .replace(/\b(?:\d{1,3}\.){3}\d{1,3}\b/g, "[ip-address]")
+    .replace(/\b(?:[a-z0-9-]+\.)+(?:com|net|org|io|co\.uk|uk)\b/gi, "[domain]")
+    .replace(/\b(password|passwd|token|secret|api[-_ ]?key)\s*[:=]\s*\S+/gi, "$1=[redacted]");
+  return redacted.length > 500 ? `${redacted.slice(0, 497)}…` : redacted;
 }
 
 export function redactedSlackInboundLog(decision: SlackInboundDecision): Record<string, string> {
