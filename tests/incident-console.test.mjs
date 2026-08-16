@@ -42,7 +42,7 @@ test("server-renders the incident console", async () => {
   assert.match(html, /HUMAN DECISION GATE/);
 });
 
-test("server-renders a public landing page with a dashboard sign-in path", async () => {
+test("server-renders a public landing page with a native dashboard sign-in action", async () => {
   const workerUrl = new URL("../dist/server/index.js", import.meta.url);
   workerUrl.searchParams.set("test", `${process.pid}-${Date.now()}`);
   const { default: worker } = await import(workerUrl.href);
@@ -55,7 +55,7 @@ test("server-renders a public landing page with a dashboard sign-in path", async
   assert.equal(response.status, 200);
   const html = await response.text();
   assert.match(html, /Turn an infrastructure alert into a defensible next step/);
-  assert.match(html, /href="\/dashboard"/);
+  assert.match(html, /<form class="landing-sign-in-form" action="\/dashboard">/);
   assert.match(html, /Evidence before action/);
 });
 

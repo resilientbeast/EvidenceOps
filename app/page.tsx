@@ -1,4 +1,4 @@
-import Link from "next/link";
+/* eslint-disable @next/next/no-html-link-for-pages */
 
 const pillars = [
   {
@@ -39,10 +39,10 @@ export default function Home() {
   return (
     <main className="landing-shell">
       <header className="landing-nav">
-        <Link className="landing-brand" href="/" aria-label="EvidenceOps home">
+        <a className="landing-brand" href="/" aria-label="EvidenceOps home">
           <span>EO</span>
           <strong>EvidenceOps</strong>
-        </Link>
+        </a>
         <SignInButton className="landing-nav-link" compact />
       </header>
 
