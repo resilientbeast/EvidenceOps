@@ -233,23 +233,23 @@ button:disabled { cursor: not-allowed; opacity: .58; }
 .signal-flow span { font-size: 11px; font-weight: 700; }
 .signal-flow i { color: #99c5af; font: 700 9px var(--font-geist-mono); font-style: normal; }
 .signal-card > p { margin: 22px 0 0; color: #9db2aa; font-size: 10px; line-height: 1.45; }
-.landing-problem { max-width: 860px; margin: 0 auto; padding: 106px 24px; text-align: center; background: var(--paper); }
+.landing-problem { max-width: 860px; margin: 0 auto; padding: 106px 24px; text-align: center; background: var(--paper); color: var(--ink); }
 .landing-problem h2, .landing-section-heading h2, .landing-roles h2, .landing-real h2 { margin: 14px 0 20px; color: var(--ink); font-size: clamp(30px, 4vw, 48px); line-height: 1.06; letter-spacing: -2px; }
 .landing-problem .landing-section-label, .landing-section-heading .landing-section-label, .landing-roles .landing-section-label, .landing-real .landing-section-label { color: #658077; }
 .landing-problem > p:last-child { margin: auto; max-width: 720px; color: #52615b; font-size: 16px; line-height: 1.7; }
-.landing-section { background: #e9ede7; padding: 86px max(24px, calc((100% - 1180px) / 2)); }
+.landing-section { background: #e9ede7; color: var(--ink); padding: 86px max(24px, calc((100% - 1180px) / 2)); }
 .landing-section-heading { max-width: 620px; }
 .pillar-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; margin-top: 42px; }
-.pillar-card { min-height: 280px; padding: 24px; border: 1px solid #d4ddd4; border-radius: 10px; background: #fbfcf8; }
+.pillar-card { min-height: 280px; padding: 24px; border: 1px solid #d4ddd4; border-radius: 10px; background: #fbfcf8; color: var(--ink); }
 .pillar-card > span { color: var(--green); font: 700 11px var(--font-geist-mono); }
-.pillar-card h3 { margin: 45px 0 12px; font-size: 20px; letter-spacing: -.8px; }
+.pillar-card h3 { margin: 45px 0 12px; color: var(--ink); font-size: 20px; letter-spacing: -.8px; }
 .pillar-card p { margin: 0; color: #56645e; font-size: 12px; line-height: 1.65; }
-.landing-roles { padding: 92px max(24px, calc((100% - 1180px) / 2)); display: grid; grid-template-columns: minmax(280px, .8fr) minmax(420px, 1.2fr); gap: 100px; background: #fbfcf8; }
+.landing-roles { padding: 92px max(24px, calc((100% - 1180px) / 2)); display: grid; grid-template-columns: minmax(280px, .8fr) minmax(420px, 1.2fr); gap: 100px; background: #fbfcf8; color: var(--ink); }
 .landing-roles-intro > p:last-child { max-width: 390px; margin: 0; color: #5c6c65; font-size: 14px; line-height: 1.65; }
 .roles-list { list-style: none; margin: 0; padding: 0; border-top: 1px solid #d6ded7; }
 .roles-list li { display: grid; grid-template-columns: 36px 1fr auto; gap: 13px; padding: 19px 0; border-bottom: 1px solid #d6ded7; align-items: start; }
 .roles-list li > span { color: var(--green); font: 700 10px var(--font-geist-mono); }
-.roles-list strong { font-size: 15px; }
+.roles-list strong { color: var(--ink); font-size: 15px; }
 .roles-list p { display: inline; margin: 0; color: #5e6c66; font-size: 13px; line-height: 1.5; }
 .roles-list i { color: #789087; font-style: normal; }
 .landing-real { padding: 78px max(24px, calc((100% - 930px) / 2)); display: grid; grid-template-columns: 86px 1fr; gap: 32px; background: #d7f064; color: var(--deep); }
