@@ -18,10 +18,9 @@ services:
     ports:
       - "127.0.0.1:3100:3000"
     volumes:
-      # ccloud uses a human CockroachDB Cloud session. The host's authenticated
-      # config is mounted read-only; the application invokes only its fixed,
-      # read-only `cluster info` command.
-      - ${CCLOUD_AUTH_DIR:-/home/ubuntu/.config/cockroachdb}:/home/node/.config/cockroachdb:ro
+      # ccloud updates session metadata while reading. The host session stays
+      # read-only; the entrypoint copies it into the container's ephemeral home.
+      - ${CCLOUD_AUTH_DIR:-/home/ubuntu/.config/cockroachdb}:/run/ccloud-auth:ro
     restart: unless-stopped
     init: true
     mem_limit: 1g
