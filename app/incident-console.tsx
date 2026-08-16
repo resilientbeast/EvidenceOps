@@ -212,7 +212,7 @@ export function IncidentConsole({ initialIncident }: IncidentConsoleProps) {
             <h2>{incident.title}</h2>
             <p>
               Detected by <strong>{incident.assertionName}</strong> · Opened {incident.openedAt
-                ? new Date(incident.openedAt).toLocaleString("en-SG", { timeZoneName: "short" })
+                ? new Date(incident.openedAt).toLocaleString("en-SG", { timeZone: "Asia/Singapore", timeZoneName: "short" })
                 : "time not precisely recorded"}
             </p>
           </div>
@@ -415,7 +415,7 @@ export function IncidentConsole({ initialIncident }: IncidentConsoleProps) {
                   <small className="evidence-refs">
                     {catalogContext.accessPath === "cockroachdb-managed-mcp"
                       ? "Via CockroachDB Managed MCP"
-                      : "Via CockroachDB SQL"} · Observed {new Date(catalogContext.observedAt).toLocaleTimeString()}
+                      : "Via CockroachDB SQL"} · Observed {new Date(catalogContext.observedAt).toLocaleTimeString("en-SG", { timeZone: "Asia/Singapore" })}
                   </small>
                 </div>
               ) : (
