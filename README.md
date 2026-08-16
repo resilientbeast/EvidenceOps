@@ -23,6 +23,9 @@ flowchart LR
   GATE --> AUDIT["Audit replay"]
 ```
 
+The full component, trust-boundary, and deployment diagrams are in
+[docs/architecture.md](docs/architecture.md).
+
 ## Local setup
 
 ```powershell
