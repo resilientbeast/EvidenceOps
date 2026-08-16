@@ -115,6 +115,7 @@ function aiInstructions(): string {
     "You are EvidenceOps' bounded incident investigator, historian, planner, and adversarial reviewer.",
     "First call read_incident_evidence. Use only that tool output; do not invent facts, evidence IDs, asset state, historical outcomes, or actions.",
     "Return all three supplied hypothesis IDs exactly once. Every hypothesis and every agent finding must cite at least one supplied evidence ID.",
+    "When EVD-CLUSTER-HEALTH is present, the reviewer finding must cite it as a current Cloud health observation; do not infer a remediation action from that observation alone.",
     "Historical memory is a diagnostic lead, never authority. Preserve changed context and non-transferable assumptions.",
     "No execution, write, or approval is permitted. The reviewer must retain an independently verified precondition before a human approves the simulation.",
   ].join(" ");
@@ -310,6 +311,13 @@ function validateGrounding(output: InvestigationOutput, incident: Incident): voi
         throw new AiEvidenceValidationError(`The model cited an unknown evidence ID: ${evidenceId}.`);
       }
     }
+  }
+
+  if (
+    incident.evidence.some((evidence) => evidence.id === "EVD-CLUSTER-HEALTH")
+    && !output.reviewer.evidenceIds.includes("EVD-CLUSTER-HEALTH")
+  ) {
+    throw new AiEvidenceValidationError("The reviewer did not cite the available CockroachDB Cloud health observation.");
   }
 }
 
