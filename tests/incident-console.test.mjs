@@ -33,13 +33,30 @@ test("server-renders the incident console", async () => {
   assert.match(response.headers.get("content-type") ?? "", /^text\/html\b/i);
 
   const html = await response.text();
-  assert.match(html, /<title>EvidenceOps — Agentic Incident Command<\/title>/i);
+  assert.match(html, /<title>EvidenceOps — Evidence-Gated Incident Response<\/title>/i);
   assert.match(html, /PHP-FPM pool exhausted by live Elementor regeneration on frontend requests/);
   assert.match(html, /Competing hypotheses/);
   assert.match(html, /Evidence-gated investigation/);
   assert.match(html, /MATCH DELTA/);
   assert.match(html, /0(?:<!-- -->)? stored resolutions searched/);
   assert.match(html, /HUMAN DECISION GATE/);
+});
+
+test("server-renders a public landing page with a dashboard sign-in path", async () => {
+  const workerUrl = new URL("../dist/server/index.js", import.meta.url);
+  workerUrl.searchParams.set("test", `${process.pid}-${Date.now()}`);
+  const { default: worker } = await import(workerUrl.href);
+  const response = await worker.fetch(
+    new Request("http://localhost/", { headers: { accept: "text/html" } }),
+    { ASSETS: { fetch: async () => new Response("Not found", { status: 404 }) } },
+    { waitUntil() {}, passThroughOnException() {} },
+  );
+
+  assert.equal(response.status, 200);
+  const html = await response.text();
+  assert.match(html, /Turn an infrastructure alert into a defensible next step/);
+  assert.match(html, /href="\/dashboard"/);
+  assert.match(html, /Evidence before action/);
 });
 
 test("fixture mode is explicit and never presented as a live connection", async () => {
