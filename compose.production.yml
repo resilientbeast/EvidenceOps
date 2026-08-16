@@ -12,15 +12,10 @@ services:
       HOST: 0.0.0.0
       NODE_ENV: production
       PORT: 3000
-      CCLOUD_HEALTH_FILE: /run/evidenceops/ccloud-cluster-health.json
       VINEXT_TRUST_PROXY: "1"
       VINEXT_TRUSTED_HOSTS: evidenceops.example
     ports:
       - "127.0.0.1:3100:3000"
-    volumes:
-      # The host-owned ccloud command writes only a short-lived, non-secret
-      # health snapshot. The application receives that result read-only.
-      - ${CCLOUD_HEALTH_DIR:-/opt/evidenceops/.runtime}:/run/evidenceops:ro
     restart: unless-stopped
     init: true
     mem_limit: 1g

@@ -61,43 +61,29 @@ The returned context must contain:
 
 The dashboard renders the same provenance as **Via CockroachDB Managed MCP**.
 
-## ccloud cluster-health evidence
+## CockroachDB Cloud API cluster-health evidence
 
-Before each model investigation, EvidenceOps runs this bounded, read-only
-command and adds its result to the one immutable evidence bundle as
-`EVD-CLUSTER-HEALTH`:
+Before each model investigation, EvidenceOps makes one bounded, read-only
+request to CockroachDB Cloud and adds its result to the immutable evidence
+bundle as `EVD-CLUSTER-HEALTH`:
 
-```bash
-ccloud cluster info your-cockroach-cluster --quiet --output json
+```http
+GET https://cockroachlabs.cloud/api/v1/clusters/{cluster-id}
+Authorization: Bearer {service-account-api-key}
 ```
 
-Set `CCLOUD_CLUSTER_NAME` to the cluster name and, when needed, use
-`CCLOUD_COMMAND` for the absolute CLI path. The check times out after five
-seconds by default and is cached for 30 seconds. A missing CLI, expired login,
-timeout, or malformed response produces citeable `unknown` health evidence;
-it never prevents the incident investigation from continuing.
+Set `COCKROACHDB_CLOUD_API_KEY` to a service-account API key with access only
+to the EvidenceOps cluster. The check times out after five seconds by default
+and is cached for 30 seconds. A missing credential, timeout, or malformed
+response produces citeable `unknown` health evidence; it never prevents the
+investigation from continuing.
 
-`ccloud` uses its own authenticated session. Do not copy a CockroachDB Managed
-MCP API key or any browser/session credential into application environment
-files.
+The key is used solely as an HTTP Bearer token for that fixed `GET` endpoint;
+it is never returned by the browser, model, logs, or API response.
 
-In the Lightsail Docker deployment, `ccloud` remains host-owned because its
-human authentication session is not portable into a long-lived application
-container. A host job invokes only the fixed, read-only `cluster info` command
-and atomically writes its JSON result to `/opt/evidenceops/.runtime/`
-`ccloud-cluster-health.json`. Compose mounts that directory read-only at
-`/run/evidenceops`; the application accepts a snapshot only while it is fresh
-(two minutes by default). No CockroachDB Cloud session credential enters the
-container, image, application environment, or Git.
-
-Refresh the snapshot using the included host-side helper (and schedule the same
-command at least once per minute in the host's approved scheduler):
-
-```bash
-bash infra/lightsail/refresh-ccloud-health.sh \
-  "$CCLOUD_CLUSTER_NAME" \
-  /opt/evidenceops/.runtime/ccloud-cluster-health.json
-```
+`ccloud` remains installed on the Lightsail host for interactive, operator-led
+CockroachDB Cloud operations. Its browser-authenticated session is deliberately
+not used as a long-lived application credential.
 
 ## Pinned Agent Skills diagnostic
 
