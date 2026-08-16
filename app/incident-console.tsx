@@ -197,7 +197,7 @@ export function IncidentConsole({ initialIncident }: IncidentConsoleProps) {
             <span className="connection"><i /> {isFixture ? "Seeded incident record" : "CockroachDB catalog"}</span>
             <span className="connection"><i /> {incident.memoryMode === "cockroachdb" ? "CockroachDB vector memory" : isPersistentMemory ? "PostgreSQL connected" : "Memory fixture"}</span>
             <span className="connection">{incident.agentRun ? `AI verified · ${incident.agentRun.model}` : "AI run pending"}</span>
-            <button className="icon-button" aria-label="More actions" type="button">•••</button>
+            <a className="settings-link" href="/settings">Settings</a>
           </div>
         </header>
 

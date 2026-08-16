@@ -139,3 +139,24 @@ test("incident API serves a typed fixture and enforces decision idempotency", as
   );
   assert.equal(conflictResponse.status, 409);
 });
+
+test("Slack settings API is protected and never exposes credentials when persistence is unavailable", async () => {
+  const worker = await loadWorker();
+  const executionContext = { waitUntil() {}, passThroughOnException() {} };
+
+  const unauthenticated = await worker.fetch(
+    new Request("http://localhost/api/settings/slack"),
+    environment(),
+    executionContext,
+  );
+  assert.equal(unauthenticated.status, 503);
+
+  const authenticated = await worker.fetch(
+    authenticatedRequest("http://localhost/api/settings/slack"),
+    environment(),
+    executionContext,
+  );
+  assert.equal(authenticated.status, 503);
+  const payload = await authenticated.json();
+  assert.doesNotMatch(payload.error, /xoxb-|xapp-/i);
+});

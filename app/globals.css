@@ -66,6 +66,8 @@ button:disabled { cursor: not-allowed; opacity: .58; }
 .connection { color: #53625d; font-size: 12px; }
 .connection i { width: 7px; height: 7px; background: #45a873; border-radius: 50%; display: inline-block; margin-right: 6px; }
 .icon-button { font-weight: 900; color: var(--ink); }
+.settings-link { color: var(--deep); text-decoration: none; padding: 7px 10px; border: 1px solid #c7d1ca; border-radius: 7px; font: 700 11px var(--font-geist-mono); }
+.settings-link:hover { border-color: var(--green); color: var(--green); }
 
 .incident-banner {
   min-height: 126px; background: var(--deep); color: white; border-radius: 14px;
@@ -261,6 +263,31 @@ button:disabled { cursor: not-allowed; opacity: .58; }
 .landing-footer p { margin: 0; color: #9cb3aa; font-size: 10px; line-height: 1.55; }
 .landing-footer-cta { margin: 0; white-space: nowrap; }
 
+.settings-shell { min-height: 100vh; background: var(--paper); }
+.settings-topbar { height: 82px; width: min(980px, calc(100% - 48px)); margin: auto; display: flex; align-items: center; justify-content: space-between; }
+.settings-brand { color: var(--deep); display: inline-flex; align-items: center; gap: 10px; text-decoration: none; font-size: 14px; }
+.settings-brand span { width: 30px; height: 30px; display: grid; place-items: center; border-radius: 7px 2px 7px 2px; background: #d7f064; color: var(--deep); font: 900 10px var(--font-geist-mono); }
+.settings-back { color: #466258; font: 700 11px var(--font-geist-mono); text-decoration: none; }
+.settings-back:hover { color: var(--green); }
+.settings-content { width: min(680px, calc(100% - 48px)); margin: 48px auto 90px; }
+.settings-eyebrow { margin: 0; color: var(--green); font: 700 10px var(--font-geist-mono); letter-spacing: 1.3px; text-transform: uppercase; }
+.settings-content h1 { margin: 11px 0; color: var(--deep); font-size: 44px; letter-spacing: -2px; }
+.settings-intro { max-width: 620px; margin: 0 0 30px; color: #57675f; line-height: 1.65; }
+.slack-settings-form { display: grid; gap: 19px; padding: 26px; border: 1px solid var(--line); border-radius: 13px; background: var(--panel); box-shadow: 0 12px 30px rgba(17,42,36,.06); }
+.settings-status { display: flex; flex-wrap: wrap; gap: 8px; padding-bottom: 18px; border-bottom: 1px solid #e0e6df; }
+.settings-status span { border-radius: 999px; padding: 6px 9px; font: 700 9px var(--font-geist-mono); }
+.settings-status .configured { background: #e4f3e9; color: #226448; }
+.settings-status .pending { background: #f0f1ed; color: #65716c; }
+.slack-settings-form label { display: grid; gap: 7px; color: var(--ink); font-size: 12px; font-weight: 700; }
+.slack-settings-form label small { color: var(--muted); font-size: 10px; font-weight: 400; line-height: 1.45; }
+.slack-settings-form input, .slack-settings-form textarea { width: 100%; border: 1px solid #cbd5ce; border-radius: 7px; padding: 10px 11px; background: white; color: var(--ink); font: 12px var(--font-geist-mono); resize: vertical; }
+.slack-settings-form input:focus, .slack-settings-form textarea:focus { outline: 3px solid #cce9da; border-color: var(--green); }
+.settings-save { justify-self: start; border: 0; border-radius: 7px; padding: 11px 14px; background: var(--deep); color: #d7f064; cursor: pointer; font: 800 11px var(--font-geist-mono); }
+.settings-save:hover { background: #1d4036; }
+.settings-message { margin: 0; color: #28704f; font-size: 12px; }
+.settings-message.error { color: #b23e20; }
+.settings-audit { margin: 0; color: var(--muted); font-size: 10px; }
+
 @media (max-width: 1050px) {
   .landing-hero { gap: 34px; }
   .landing-roles { gap: 50px; }
@@ -286,6 +313,10 @@ button:disabled { cursor: not-allowed; opacity: .58; }
   .landing-roles { padding: 65px 16px; grid-template-columns: 1fr; gap: 34px; }
   .landing-real { padding: 62px 24px; grid-template-columns: 1fr; gap: 20px; }
   .landing-footer { padding: 38px 24px; grid-template-columns: 1fr; gap: 22px; }
+  .settings-topbar, .settings-content { width: min(100% - 32px, 680px); }
+  .settings-content { margin-top: 30px; }
+  .settings-content h1 { font-size: 36px; }
+  .slack-settings-form { padding: 18px; }
   .rail { width: 54px; }
   .workspace { margin-left: 54px; width: calc(100% - 54px); padding: 0 14px 18px; }
   .topbar { height: auto; padding: 20px 0; align-items: start; }
