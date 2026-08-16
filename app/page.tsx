@@ -33,7 +33,7 @@ export default function Home() {
           <span>EO</span>
           <strong>EvidenceOps</strong>
         </Link>
-        <Link className="landing-nav-link" href="/dashboard">Sign in <span aria-hidden="true">↗</span></Link>
+        <a className="landing-nav-link" href="/dashboard">Sign in <span aria-hidden="true">↗</span></a>
       </header>
 
       <section className="landing-hero" aria-labelledby="landing-title">
@@ -41,7 +41,7 @@ export default function Home() {
           <p className="landing-kicker"><i /> Evidence-gated incident response</p>
           <h1 id="landing-title">Turn an infrastructure alert into a defensible next step.</h1>
           <p className="landing-lede">EvidenceOps investigates incidents on your servers and sites, checks what happened last time, and proposes a plan — validated against the evidence, and never executed without you.</p>
-          <Link className="landing-cta" href="/dashboard">Sign in <span aria-hidden="true">→</span></Link>
+          <a className="landing-cta" href="/dashboard">Sign in <span aria-hidden="true">→</span></a>
         </div>
 
         <div className="signal-card" aria-label="Example evidence-gated investigation flow">
@@ -107,7 +107,7 @@ export default function Home() {
       <footer className="landing-footer">
         <div><span className="landing-footer-mark">EO</span><strong>EvidenceOps</strong></div>
         <p>Built for the CockroachDB × AWS Hackathon — CockroachDB for durable and vector-searched memory, AWS Bedrock for evidence-gated investigation.</p>
-        <Link className="landing-footer-cta" href="/dashboard">Sign in <span aria-hidden="true">→</span></Link>
+        <a className="landing-footer-cta" href="/dashboard">Sign in <span aria-hidden="true">→</span></a>
       </footer>
     </main>
   );
