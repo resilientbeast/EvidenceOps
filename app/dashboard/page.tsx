@@ -6,8 +6,11 @@ import { IncidentConsole } from "@/app/incident-console";
 
 export const dynamic = "force-dynamic";
 
-export default async function Dashboard() {
-  const incidentId = process.env.RECALLOPS_ACTIVE_INCIDENT_ID ?? phpFpmElementorFixture.id;
+export default async function Dashboard({ searchParams }: { searchParams: Promise<{ incident?: string }> }) {
+  const query = await searchParams;
+  const incidentId = isUuid(query.incident)
+    ? query.incident
+    : process.env.RECALLOPS_ACTIVE_INCIDENT_ID ?? phpFpmElementorFixture.id;
   let incident;
   try {
     incident = await readIncident(incidentId, getConfiguredIncidentRepository());
@@ -16,4 +19,8 @@ export default async function Dashboard() {
     incident = await readIncident(phpFpmElementorFixture.id, fixtureIncidentRepository);
   }
   return <IncidentConsole initialIncident={incident} />;
+}
+
+function isUuid(value: string | undefined): value is string {
+  return Boolean(value && /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value));
 }

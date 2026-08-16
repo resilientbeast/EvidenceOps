@@ -109,3 +109,21 @@ test("an accepted delivery creates one pending review intake", async () => {
   assert.equal(await store.recordAcceptedInboundEvent(accepted), "00000000-0000-4000-8000-000000000001");
   assert.equal(await store.recordAcceptedInboundEvent(accepted), null);
 });
+
+test("only a reviewed intake can be promoted once", async () => {
+  let promotions = 0;
+  const pool = {
+    async query(sql: string) {
+      if (sql.includes("WITH promoted")) {
+        promotions += 1;
+        return promotions === 1
+          ? { rowCount: 1, rows: [{ id: "00000000-0000-4000-8000-000000000009" }] }
+          : { rowCount: 0, rows: [] };
+      }
+      return { rowCount: null, rows: [] };
+    },
+  };
+  const store = new CockroachOrganizationSlackSettingsStore(pool as never, Buffer.alloc(32, 7));
+  assert.equal(await store.promoteIncidentIntake("operator", "00000000-0000-4000-8000-000000000001"), "00000000-0000-4000-8000-000000000009");
+  assert.equal(await store.promoteIncidentIntake("operator", "00000000-0000-4000-8000-000000000001"), null);
+});

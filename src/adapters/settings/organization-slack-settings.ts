@@ -3,6 +3,9 @@ import type { Pool } from "pg";
 
 const INTEGRATION = "slack";
 const DEFAULT_ORGANIZATION_ID = "org-local-default";
+const SLACK_INTAKE_SERVER_ID = "70000000-0000-4000-8000-000000000001";
+const SLACK_INTAKE_SITE_ID = "70000000-0000-4000-8000-000000000002";
+const SLACK_INTAKE_SERVICE_ID = "70000000-0000-4000-8000-000000000003";
 
 export type SlackSettings = {
   botTokenConfigured: boolean;
@@ -46,13 +49,14 @@ export type SlackInboundEventClaim = {
 
 export type SlackIncidentIntake = {
   id: string;
-  status: "pending_review" | "reviewed" | "dismissed";
+  status: "pending_review" | "reviewed" | "dismissed" | "promoted";
   summary: string;
   eventType: string;
   receivedAt: string;
   reviewedAt: string | null;
   reviewedBy: string | null;
   reviewNote: string | null;
+  promotedIncidentId: string | null;
 };
 
 export type SlackIncidentIntakeReview = {
@@ -74,13 +78,14 @@ type ClaimedInboundEventRow = {
 
 type SlackIncidentIntakeRow = {
   id: string;
-  status: "pending_review" | "reviewed" | "dismissed";
+  status: "pending_review" | "reviewed" | "dismissed" | "promoted";
   redacted_summary: string;
   event_type: string;
   received_at: Date | string;
   reviewed_at: Date | string | null;
   reviewed_by: string | null;
   review_note: string | null;
+  promoted_incident_id: string | null;
 };
 
 export class SettingsConfigurationError extends Error {}
@@ -218,7 +223,7 @@ export class CockroachOrganizationSlackSettingsStore {
     const organizationId = organizationIdFor(userId);
     await this.ensureInboundIntakeTable();
     const result = await this.pool.query<SlackIncidentIntakeRow>(
-      `SELECT id::STRING AS id, status, redacted_summary, event_type, received_at, reviewed_at, reviewed_by, review_note
+      `SELECT id::STRING AS id, status, redacted_summary, event_type, received_at, reviewed_at, reviewed_by, review_note, promoted_incident_id::STRING AS promoted_incident_id
          FROM slack_incident_intakes
         WHERE organization_id = $1
         ORDER BY received_at DESC`,
@@ -234,10 +239,42 @@ export class CockroachOrganizationSlackSettingsStore {
       `UPDATE slack_incident_intakes
           SET status = $3, reviewed_at = now(), reviewed_by = $4, review_note = $5
         WHERE organization_id = $1 AND id = $2::UUID AND status = 'pending_review'
-       RETURNING id::STRING AS id, status, redacted_summary, event_type, received_at, reviewed_at, reviewed_by, review_note`,
+       RETURNING id::STRING AS id, status, redacted_summary, event_type, received_at, reviewed_at, reviewed_by, review_note, promoted_incident_id::STRING AS promoted_incident_id`,
       [organizationId, intakeId, review.status, userId, review.reviewNote],
     );
     return result.rowCount === 1 ? toIncidentIntake(result.rows[0]) : null;
+  }
+
+  async promoteIncidentIntake(userId: string, intakeId: string): Promise<string | null> {
+    const organizationId = organizationIdFor(userId);
+    await this.ensurePromotionSchema();
+    await this.ensureSlackIntakeAssets();
+    const incidentId = crypto.randomUUID();
+    const result = await this.pool.query<{ id: string }>(
+      `WITH promoted AS (
+         UPDATE slack_incident_intakes
+            SET status = 'promoted', promoted_incident_id = $3::UUID, promoted_at = now(), promoted_by = $4
+          WHERE organization_id = $1 AND id = $2::UUID AND status = 'reviewed'
+         RETURNING redacted_summary
+       )
+       INSERT INTO incidents
+         (id, service_id, severity, title, root_cause, resolution, outcome, status, opened_at, resolved_at, evidence, embedding)
+       SELECT $3::UUID, $5::UUID, 'SEV-3', 'Slack intake promoted for evidence review', NULL, NULL, NULL,
+              'needs_review', now(), NULL,
+              jsonb_build_object(
+                'schemaVersion', 1,
+                'provenance', jsonb_build_object('kind', 'slack_intake', 'synthetic', false),
+                'summary', redacted_summary,
+                'symptoms', ARRAY[redacted_summary],
+                'diagnostics', ARRAY['Redacted Slack intake was explicitly promoted by an operator.'],
+                'doNotInfer', ARRAY['Do not treat a Slack message as a confirmed root cause.', 'No remediation is approved by this promotion.']
+              ),
+              NULL
+         FROM promoted
+       RETURNING id::STRING AS id`,
+      [organizationId, intakeId, incidentId, userId, SLACK_INTAKE_SERVICE_ID],
+    );
+    return result.rowCount === 1 ? result.rows[0].id : null;
   }
 
   private async ensureTable(): Promise<void> {
@@ -292,12 +329,53 @@ export class CockroachOrganizationSlackSettingsStore {
           reviewed_at TIMESTAMPTZ NULL,
           reviewed_by STRING NULL,
           review_note STRING NULL,
-          CONSTRAINT slack_incident_intakes_status_check CHECK (status IN ('pending_review', 'reviewed', 'dismissed')),
+          promoted_incident_id UUID NULL,
+          promoted_at TIMESTAMPTZ NULL,
+          promoted_by STRING NULL,
+          CONSTRAINT slack_incident_intakes_status_check CHECK (status IN ('pending_review', 'reviewed', 'dismissed', 'promoted')),
           UNIQUE (organization_id, event_id)
         )
       `);
     } catch {
       throw new SettingsPersistenceError("Unable to initialize Slack incident intake.");
+    }
+  }
+
+  private async ensurePromotionSchema(): Promise<void> {
+    await this.ensureInboundIntakeTable();
+    try {
+      await this.pool.query(`ALTER TABLE slack_incident_intakes ADD COLUMN IF NOT EXISTS promoted_incident_id UUID NULL`);
+      await this.pool.query(`ALTER TABLE slack_incident_intakes ADD COLUMN IF NOT EXISTS promoted_at TIMESTAMPTZ NULL`);
+      await this.pool.query(`ALTER TABLE slack_incident_intakes ADD COLUMN IF NOT EXISTS promoted_by STRING NULL`);
+      await this.pool.query(`ALTER TABLE slack_incident_intakes DROP CONSTRAINT IF EXISTS slack_incident_intakes_status_check`);
+      await this.pool.query(`ALTER TABLE slack_incident_intakes ADD CONSTRAINT slack_incident_intakes_status_check CHECK (status IN ('pending_review', 'reviewed', 'dismissed', 'promoted'))`);
+    } catch {
+      throw new SettingsPersistenceError("Unable to initialize Slack intake promotion.");
+    }
+  }
+
+  private async ensureSlackIntakeAssets(): Promise<void> {
+    try {
+      await this.pool.query(
+        `INSERT INTO servers (id, hostname, panel, region)
+         VALUES ($1::UUID, 'not-recorded', 'Slack intake boundary', 'not-recorded')
+         ON CONFLICT (id) DO NOTHING`,
+        [SLACK_INTAKE_SERVER_ID],
+      );
+      await this.pool.query(
+        `INSERT INTO sites (id, server_id, domain, owner, sla_tier)
+         VALUES ($1::UUID, $2::UUID, 'external-alert-source.example', 'Operator-reviewed intake', 'internal')
+         ON CONFLICT (id) DO NOTHING`,
+        [SLACK_INTAKE_SITE_ID, SLACK_INTAKE_SERVER_ID],
+      );
+      await this.pool.query(
+        `INSERT INTO services (id, site_id, kind, name, status, metadata)
+         VALUES ($1::UUID, $2::UUID, 'slack-intake', 'Slack evidence intake', 'needs_review', $3::JSONB)
+         ON CONFLICT (id) DO NOTHING`,
+        [SLACK_INTAKE_SERVICE_ID, SLACK_INTAKE_SITE_ID, JSON.stringify({ source: "slack", dataClassification: "redacted" })],
+      );
+    } catch {
+      throw new SettingsPersistenceError("Unable to initialize the Slack intake catalog context.");
     }
   }
 
@@ -378,6 +456,7 @@ function toIncidentIntake(row: SlackIncidentIntakeRow): SlackIncidentIntake {
     reviewedAt: row.reviewed_at === null ? null : timestamp(row.reviewed_at),
     reviewedBy: row.reviewed_by,
     reviewNote: row.review_note,
+    promotedIncidentId: row.promoted_incident_id,
   };
 }
 
