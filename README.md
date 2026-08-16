@@ -164,3 +164,7 @@ own authorization model, audit requirements, and end-to-end tests.
 - [CockroachDB Managed MCP boundary](docs/cockroachdb-managed-mcp.md)
 - [CockroachDB agent-skills evidence](docs/cockroachdb-agent-skills.md)
 - [Lightsail deployment guide](docs/lightsail-deployment.md)
+
+## License
+
+EvidenceOps is licensed under the [Apache License 2.0](LICENSE).

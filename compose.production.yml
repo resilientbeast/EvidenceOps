@@ -10,12 +10,18 @@ services:
       - .env
     environment:
       HOST: 0.0.0.0
+      HOME: /home/node
       NODE_ENV: production
       PORT: 3000
       VINEXT_TRUST_PROXY: "1"
       VINEXT_TRUSTED_HOSTS: evidenceops.example
     ports:
       - "127.0.0.1:3100:3000"
+    volumes:
+      # ccloud uses a human CockroachDB Cloud session. The host's authenticated
+      # config is mounted read-only; the application invokes only its fixed,
+      # read-only `cluster info` command.
+      - ${CCLOUD_AUTH_DIR:-/home/ubuntu/.config/cockroachdb}:/home/node/.config/cockroachdb:ro
     restart: unless-stopped
     init: true
     mem_limit: 1g

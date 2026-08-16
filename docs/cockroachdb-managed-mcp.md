@@ -81,6 +81,13 @@ it never prevents the incident investigation from continuing.
 MCP API key or any browser/session credential into application environment
 files.
 
+In the Lightsail Docker deployment, the CLI is installed in the application
+image and the host's `~/.config/cockroachdb` directory is mounted read-only at
+the container user's matching config path. The compose file accepts an optional
+`CCLOUD_AUTH_DIR` host-path override for a dedicated CLI account. Keep that
+directory out of Git and use a CockroachDB Cloud identity limited to the target
+cluster. The application can only invoke its fixed `cluster info` command.
+
 ## Pinned Agent Skills diagnostic
 
 EvidenceOps also records the output of the pinned
