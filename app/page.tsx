@@ -25,6 +25,16 @@ const roles = [
   ["04", "Reviewer", "challenges it before a human ever sees an approve button."],
 ];
 
+function SignInButton({ className, compact = false }: { className: string; compact?: boolean }) {
+  return (
+    <form action="/dashboard" className="landing-sign-in-form">
+      <button className={className} type="submit">
+        Sign in <span aria-hidden="true">{compact ? "↗" : "→"}</span>
+      </button>
+    </form>
+  );
+}
+
 export default function Home() {
   return (
     <main className="landing-shell">
@@ -33,7 +43,7 @@ export default function Home() {
           <span>EO</span>
           <strong>EvidenceOps</strong>
         </Link>
-        <a className="landing-nav-link" href="/dashboard">Sign in <span aria-hidden="true">↗</span></a>
+        <SignInButton className="landing-nav-link" compact />
       </header>
 
       <section className="landing-hero" aria-labelledby="landing-title">
@@ -41,7 +51,7 @@ export default function Home() {
           <p className="landing-kicker"><i /> Evidence-gated incident response</p>
           <h1 id="landing-title">Turn an infrastructure alert into a defensible next step.</h1>
           <p className="landing-lede">EvidenceOps investigates incidents on your servers and sites, checks what happened last time, and proposes a plan — validated against the evidence, and never executed without you.</p>
-          <a className="landing-cta" href="/dashboard">Sign in <span aria-hidden="true">→</span></a>
+          <SignInButton className="landing-cta" />
         </div>
 
         <div className="signal-card" aria-label="Example evidence-gated investigation flow">
@@ -107,7 +117,7 @@ export default function Home() {
       <footer className="landing-footer">
         <div><span className="landing-footer-mark">EO</span><strong>EvidenceOps</strong></div>
         <p>Built for the CockroachDB × AWS Hackathon — CockroachDB for durable and vector-searched memory, AWS Bedrock for evidence-gated investigation.</p>
-        <a className="landing-footer-cta" href="/dashboard">Sign in <span aria-hidden="true">→</span></a>
+        <SignInButton className="landing-footer-cta" />
       </footer>
     </main>
   );
